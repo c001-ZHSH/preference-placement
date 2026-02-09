@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Data files (IMPORTANT: Do not upload sensitive student data)
+*.csv
+*.xlsx
+*.xls
+
+# OS
+.DS_Store
+
+# Streamlit
+.streamlit/
