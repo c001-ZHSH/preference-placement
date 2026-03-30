@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VocabMaster</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ── Header ── -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">VocabMaster</div>
+      <nav class="nav">
+        <button class="nav-btn active" data-page="import">Import</button>
+        <button class="nav-btn" data-page="browse">Browse</button>
+        <button class="nav-btn" data-page="wordbook">Wordbook</button>
+        <button class="nav-btn" data-page="reader">Reader</button>
+        <button class="nav-btn" data-page="quiz">Quiz</button>
+      </nav>
+      <div class="header-info">
+        <span id="vocabCount">0 words</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+
+    <!-- ══════════════════════════════════════
+         PAGE: Import
+    ══════════════════════════════════════ -->
+    <section class="page" id="page-import">
+      <div class="page-header">
+        <h1>Import Vocabulary</h1>
+        <p>Import your Quizlet flashcard set to get started</p>
+      </div>
+
+      <div class="import-container">
+
+        <!-- Drop zone -->
+        <div class="drop-zone" id="dropZone">
+          <div class="drop-icon">📁</div>
+          <p class="drop-text">Drop your Quizlet export file here</p>
+          <p class="drop-or">or</p>
+          <label class="btn btn-outline" for="fileInput">Choose File</label>
+          <input type="file" id="fileInput" accept=".csv,.txt" hidden>
+          <p class="drop-hint">Supports .csv and .txt files</p>
+        </div>
+
+        <!-- Separators -->
+        <div class="card sep-card">
+          <h3>Separator Settings</h3>
+          <p class="hint">Match these to your Quizlet export settings (Settings → Export)</p>
+          <div class="sep-row">
+            <div class="sep-option">
+              <label>Term ↔ Definition separator:</label>
+              <select id="termDefSep">
+                <option value="tab">Tab ↹ (default)</option>
+                <option value="comma">Comma ,</option>
+                <option value="semicolon">Semicolon ;</option>
+              </select>
+            </div>
+            <div class="sep-option">
+              <label>Card ↔ Card separator:</label>
+              <select id="cardSep">
+                <option value="newline">New line ↵ (default)</option>
+                <option value="comma">Comma ,</option>
+                <option value="semicolon">Semicolon ;</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Paste area -->
+        <div class="card">
+          <h3>Or paste vocabulary data directly</h3>
+          <textarea id="pasteInput" class="paste-textarea"
+            placeholder="Paste your Quizlet data here (tab-separated by default):
+
+gratitude	a feeling of thankfulness and appreciation. e.g., She expressed her gratitude for the help.
+ambiguous	open to more than one interpretation; not having one obvious meaning. e.g., His answer was ambiguous.
+benevolent	well-meaning and kindly; generous. e.g., The benevolent donor gave millions to charity."></textarea>
+        </div>
+
+        <div class="import-actions">
+          <button class="btn btn-primary" id="importBtn">Import Vocabulary</button>
+          <button class="btn btn-ghost" id="loadSampleBtn">Load Sample Data</button>
+        </div>
+
+        <div id="importStatus" class="import-status hidden"></div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════
+         PAGE: Browse
+    ══════════════════════════════════════ -->
+    <section class="page hidden" id="page-browse">
+      <div class="page-header">
+        <h1>Browse Vocabulary</h1>
+        <div class="browse-controls">
+          <div class="search-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="searchInput" class="search-input" placeholder="Search words or definitions...">
+          </div>
+          <select id="sortSelect" class="sort-select">
+            <option value="alpha">A → Z</option>
+            <option value="alpha-rev">Z → A</option>
+            <option value="added">Added order</option>
+          </select>
+        </div>
+      </div>
+      <p class="result-count" id="browseCount"></p>
+      <div class="word-grid" id="wordGrid"></div>
+    </section>
+
+    <!-- ══════════════════════════════════════
+         PAGE: Wordbook
+    ══════════════════════════════════════ -->
+    <section class="page hidden" id="page-wordbook">
+      <div class="page-header">
+        <h1>My Wordbook</h1>
+        <p>Words you've saved for focused study</p>
+      </div>
+      <div class="wordbook-toolbar">
+        <button class="btn btn-primary btn-sm" id="quizWordbookBtn">Quiz from Wordbook</button>
+        <button class="btn btn-ghost btn-sm" id="clearWordbookBtn">Clear All</button>
+      </div>
+      <div id="wordbookList" class="wordbook-list"></div>
+    </section>
+
+    <!-- ══════════════════════════════════════
+         PAGE: Reader
+    ══════════════════════════════════════ -->
+    <section class="page hidden" id="page-reader">
+      <div class="page-header">
+        <h1>Passage Reader</h1>
+        <p>Paste any English text — click words to look up definitions</p>
+      </div>
+      <div class="reader-container">
+
+        <!-- Input area -->
+        <div id="readerInputArea">
+          <textarea id="readerInput" class="reader-textarea"
+            placeholder="Paste an English passage here...
+
+Words found in your vocabulary will be underlined. Click any word to see its definition, examples, and pronunciation."></textarea>
+          <button class="btn btn-primary" id="loadTextBtn">Load Text</button>
+        </div>
+
+        <!-- Display area (shown after loading) -->
+        <div class="hidden" id="readerDisplay">
+          <div class="reader-toolbar">
+            <button class="btn btn-ghost btn-sm" id="editTextBtn">✏️ Edit Text</button>
+            <span class="legend"><span class="legend-dot"></span>In your vocabulary</span>
+          </div>
+          <div class="reader-content" id="readerContent"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════
+         PAGE: Quiz
+    ══════════════════════════════════════ -->
+    <section class="page hidden" id="page-quiz">
+
+      <!-- Setup screen -->
+      <div id="quizSetup">
+        <div class="page-header">
+          <h1>Quiz</h1>
+          <p>Test your vocabulary knowledge with fill-in-the-blank questions</p>
+        </div>
+        <div class="quiz-config card">
+
+          <div class="config-group">
+            <label class="config-label">Word Source</label>
+            <div class="radio-group">
+              <label class="radio-opt">
+                <input type="radio" name="quizSource" value="all" checked>
+                <span>All words (<span id="allWordCount">0</span>)</span>
+              </label>
+              <label class="radio-opt">
+                <input type="radio" name="quizSource" value="wordbook">
+                <span>My Wordbook (<span id="wbWordCount">0</span>)</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="config-group">
+            <label class="config-label">Quiz Mode</label>
+            <div class="mode-cards">
+              <div class="mode-card selected" data-mode="def-to-word">
+                <div class="mode-icon">💭 → ✏️</div>
+                <div class="mode-title">Definition → Word</div>
+                <div class="mode-desc">Read the definition and type the vocabulary word</div>
+              </div>
+              <div class="mode-card" data-mode="word-to-fill">
+                <div class="mode-icon">✏️ → 💭</div>
+                <div class="mode-title">Word → Fill Blanks</div>
+                <div class="mode-desc">See the word, fill in key words blanked from the definition</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="config-group">
+            <label class="config-label">Number of Questions</label>
+            <div class="count-group">
+              <button class="btn-count" id="countMinus">−</button>
+              <input type="number" id="questionCount" value="10" min="1" max="100" class="count-input">
+              <button class="btn-count" id="countPlus">+</button>
+            </div>
+          </div>
+
+          <button class="btn btn-primary btn-lg" id="startQuizBtn">Start Quiz</button>
+        </div>
+      </div>
+
+      <!-- In-progress screen -->
+      <div id="quizInProgress" class="hidden">
+        <div class="quiz-header">
+          <div class="quiz-progress-wrap">
+            <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+            <span class="progress-text" id="progressText">1 / 10</span>
+          </div>
+          <div class="quiz-score-wrap">
+            <span class="score-correct" id="scoreCorrect">0</span>
+            <span class="score-sep">/</span>
+            <span id="scoreAnswered">0</span>
+          </div>
+          <button class="btn btn-ghost btn-sm" id="quitQuizBtn">Quit</button>
+        </div>
+
+        <div class="quiz-card" id="quizCard"></div>
+
+        <div class="quiz-feedback hidden" id="quizFeedback"></div>
+
+        <div class="quiz-actions">
+          <button class="btn btn-primary" id="checkAnswerBtn">Check Answer</button>
+          <button class="btn btn-ghost hidden" id="nextQuestionBtn">Next →</button>
+        </div>
+      </div>
+
+      <!-- Results screen -->
+      <div id="quizResults" class="hidden">
+        <div class="results-wrap">
+          <div class="score-circle">
+            <span class="score-pct" id="finalPct">0%</span>
+            <span class="score-lbl">Score</span>
+          </div>
+          <h2 id="resultsTitle">Quiz Complete!</h2>
+          <p id="resultsSub"></p>
+          <div class="results-actions">
+            <button class="btn btn-primary" id="retryBtn">Try Again</button>
+            <button class="btn btn-outline" id="reviewBtn">Review Mistakes</button>
+            <button class="btn btn-ghost" id="newQuizBtn">New Quiz</button>
+          </div>
+          <div class="mistakes-list hidden" id="mistakesList"></div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+</div>
+
+<!-- ── Word Detail Modal ── -->
+<div class="modal-overlay hidden" id="wordModal">
+  <div class="modal">
+    <button class="modal-close" id="closeModal">✕</button>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<!-- ── Toast ── -->
+<div class="toast hidden" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

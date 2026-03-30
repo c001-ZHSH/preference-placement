@@ -1,0 +1,47 @@
+#!/bin/bash
+# VocabMaster launcher
+# Starts a local web server and opens the app in the default browser.
+
+RESOURCES="$(cd "$(dirname "$0")/../Resources" && pwd)"
+PORT=7654
+PIDFILE="/tmp/vocabmaster_server.pid"
+
+# ── Kill any previous VocabMaster server ──────────────────────
+if [ -f "$PIDFILE" ]; then
+  OLD_PID=$(cat "$PIDFILE" 2>/dev/null)
+  if [ -n "$OLD_PID" ] && kill -0 "$OLD_PID" 2>/dev/null; then
+    kill "$OLD_PID" 2>/dev/null
+    sleep 0.2
+  fi
+  rm -f "$PIDFILE"
+fi
+
+# Also free the port in case anything else is holding it
+lsof -ti:"$PORT" | xargs kill -9 2>/dev/null
+sleep 0.2
+
+# ── Start Python HTTP server ───────────────────────────────────
+cd "$RESOURCES"
+python3 -m http.server "$PORT" > /tmp/vocabmaster.log 2>&1 &
+SERVER_PID=$!
+echo "$SERVER_PID" > "$PIDFILE"
+
+# ── Wait for server to be ready, then open browser ────────────
+for i in 1 2 3 4 5; do
+  sleep 0.3
+  if curl -s --max-time 1 "http://localhost:$PORT" > /dev/null 2>&1; then
+    break
+  fi
+done
+
+open "http://localhost:$PORT"
+
+# ── Cleanup on exit ───────────────────────────────────────────
+cleanup() {
+  kill "$SERVER_PID" 2>/dev/null
+  rm -f "$PIDFILE"
+}
+trap cleanup EXIT SIGTERM SIGINT SIGHUP
+
+# Keep running so the server stays alive while the .app is "open"
+wait "$SERVER_PID"
