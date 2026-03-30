@@ -170,19 +170,31 @@ const Parser = {
 const Lookup = {
   // Extract the English word at a mouse click position
   wordAtPoint(x, y) {
-    let range;
+    // Method 1: caretRangeFromPoint (Chrome/Safari)
+    let node = null, offset = 0;
     if (document.caretRangeFromPoint) {
-      range = document.caretRangeFromPoint(x, y);
+      const r = document.caretRangeFromPoint(x, y);
+      if (r) { node = r.startContainer; offset = r.startOffset; }
     } else if (document.caretPositionFromPoint) {
       const pos = document.caretPositionFromPoint(x, y);
-      if (!pos) return null;
-      range = document.createRange();
-      range.setStart(pos.offsetNode, pos.offset);
-      range.setEnd(pos.offsetNode, pos.offset);
+      if (pos) { node = pos.offsetNode; offset = pos.offset; }
     }
-    if (!range) return null;
-    try { range.expand('word'); } catch(e) { return null; }
-    return range.toString().trim().replace(/[^a-zA-Z'-]/g, '') || null;
+
+    // Must be a text node
+    if (!node || node.nodeType !== Node.TEXT_NODE) return null;
+
+    const text = node.textContent;
+    if (!text) return null;
+
+    // Walk left to find word start
+    let start = offset;
+    while (start > 0 && /[a-zA-Z'-]/.test(text[start - 1])) start--;
+    // Walk right to find word end
+    let end = offset;
+    while (end < text.length && /[a-zA-Z'-]/.test(text[end])) end++;
+
+    const word = text.slice(start, end).replace(/^'+|'+$/g, '');
+    return word.length >= 2 ? word : null;
   },
 
   // Position popup near cursor, keeping it inside viewport
@@ -1117,7 +1129,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     e.preventDefault();
     const word = Lookup.wordAtPoint(e.clientX, e.clientY);
-    if (word) Lookup.show(word, e.clientX, e.clientY);
+    if (word) {
+      Lookup.show(word, e.clientX, e.clientY);
+    } else {
+      showToast('⌘+click 已偵測，但無法識別字詞，請點擊在單字的中間', 2500);
+    }
   });
 
   // Close lookup popup when clicking elsewhere (without Cmd)
