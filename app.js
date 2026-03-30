@@ -333,15 +333,19 @@ const Lookup = {
   },
 
   async fetchChinese(word) {
-    const res = await fetch(
-      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(word)}&langpair=en|zh-TW`
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    const translated = data?.responseData?.translatedText;
-    // MyMemory returns the original word if it can't translate
-    if (!translated || translated.toLowerCase() === word.toLowerCase()) return null;
-    return translated;
+    try {
+      const res = await fetch(
+        `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-TW&dt=t&q=${encodeURIComponent(word)}`
+      );
+      if (!res.ok) return null;
+      const data = await res.json();
+      // Response: [ [ ["翻譯", "原文", ...], ... ], ... ]
+      const translated = data?.[0]?.[0]?.[0]?.trim();
+      if (!translated || translated.toLowerCase() === word.toLowerCase()) return null;
+      return translated;
+    } catch(e) {
+      return null;
+    }
   },
 
   hide() {
