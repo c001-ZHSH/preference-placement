@@ -1,6 +1,7 @@
 #!/bin/bash
 # VocabMaster launcher
-# Starts a local web server and opens the app in the default browser.
+# Starts a local web server in the background, opens the browser, then exits.
+# macOS requires the executable to exit promptly; the server lives on via nohup.
 
 RESOURCES="$(cd "$(dirname "$0")/../Resources" && pwd)"
 PORT=7654
@@ -20,13 +21,13 @@ fi
 lsof -ti:"$PORT" | xargs kill -9 2>/dev/null
 sleep 0.2
 
-# ── Start Python HTTP server ───────────────────────────────────
+# ── Start Python HTTP server detached (nohup keeps it alive after exit) ──
 cd "$RESOURCES"
-python3 -m http.server "$PORT" > /tmp/vocabmaster.log 2>&1 &
+nohup python3 -m http.server "$PORT" > /tmp/vocabmaster.log 2>&1 &
 SERVER_PID=$!
 echo "$SERVER_PID" > "$PIDFILE"
 
-# ── Wait for server to be ready, then open browser ────────────
+# ── Wait briefly for server to be ready ───────────────────────
 for i in 1 2 3 4 5; do
   sleep 0.3
   if curl -s --max-time 1 "http://localhost:$PORT" > /dev/null 2>&1; then
@@ -34,14 +35,6 @@ for i in 1 2 3 4 5; do
   fi
 done
 
+# ── Open browser and exit immediately ─────────────────────────
 open "http://localhost:$PORT"
-
-# ── Cleanup on exit ───────────────────────────────────────────
-cleanup() {
-  kill "$SERVER_PID" 2>/dev/null
-  rm -f "$PIDFILE"
-}
-trap cleanup EXIT SIGTERM SIGINT SIGHUP
-
-# Keep running so the server stays alive while the .app is "open"
-wait "$SERVER_PID"
+exit 0
