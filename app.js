@@ -1113,7 +1113,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Don't intercept clicks on buttons, inputs, modals, or the popup itself
     const tag = e.target.tagName;
     if (['BUTTON','INPUT','TEXTAREA','SELECT','A'].includes(tag)) return;
-    if (e.target.closest('#wordModal') || e.target.closest('#lookupPopup')) return;
+    if (e.target.closest('#lookupPopup')) return;
 
     e.preventDefault();
     const word = Lookup.wordAtPoint(e.clientX, e.clientY);
