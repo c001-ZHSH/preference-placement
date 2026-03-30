@@ -264,6 +264,17 @@ Words found in your vocabulary will be underlined. Click any word to see its def
   </main>
 </div>
 
+<!-- ── Lookup Popup (Cmd+click any word) ── -->
+<div class="lookup-popup hidden" id="lookupPopup">
+  <div class="lookup-header">
+    <span class="lookup-word" id="lookupWord"></span>
+    <button class="lookup-close" id="lookupClose">✕</button>
+  </div>
+  <div class="lookup-body" id="lookupBody">
+    <div class="lookup-loading">查詢中…</div>
+  </div>
+</div>
+
 <!-- ── Word Detail Modal ── -->
 <div class="modal-overlay hidden" id="wordModal">
   <div class="modal">

@@ -165,6 +165,179 @@ const Parser = {
 };
 
 // ══════════════════════════════════════════════════════════════
+// Lookup – Cmd+click any word → Chinese + English definition
+// ══════════════════════════════════════════════════════════════
+const Lookup = {
+  // Extract the English word at a mouse click position
+  wordAtPoint(x, y) {
+    let range;
+    if (document.caretRangeFromPoint) {
+      range = document.caretRangeFromPoint(x, y);
+    } else if (document.caretPositionFromPoint) {
+      const pos = document.caretPositionFromPoint(x, y);
+      if (!pos) return null;
+      range = document.createRange();
+      range.setStart(pos.offsetNode, pos.offset);
+      range.setEnd(pos.offsetNode, pos.offset);
+    }
+    if (!range) return null;
+    try { range.expand('word'); } catch(e) { return null; }
+    return range.toString().trim().replace(/[^a-zA-Z'-]/g, '') || null;
+  },
+
+  // Position popup near cursor, keeping it inside viewport
+  position(popup, x, y) {
+    popup.style.left = '0';
+    popup.style.top  = '0';
+    popup.classList.remove('hidden');
+    const pw = popup.offsetWidth;
+    const ph = popup.offsetHeight;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const GAP = 12;
+    let left = x + GAP;
+    let top  = y + GAP;
+    if (left + pw > vw - GAP) left = x - pw - GAP;
+    if (top  + ph > vh - GAP) top  = y - ph - GAP;
+    popup.style.left = Math.max(GAP, left) + 'px';
+    popup.style.top  = Math.max(GAP, top)  + 'px';
+  },
+
+  async show(word, x, y) {
+    if (!word || word.length < 2) return;
+    const popup   = document.getElementById('lookupPopup');
+    const body    = document.getElementById('lookupBody');
+    const wordEl  = document.getElementById('lookupWord');
+
+    wordEl.textContent = word;
+    body.innerHTML = '<div class="lookup-loading">查詢中…</div>';
+    this.position(popup, x, y);
+
+    // Check if word is in our vocabulary first
+    const vocabEntry = Store.findByTerm(word);
+
+    // Fetch English definition + Chinese translation in parallel
+    const [enResult, zhResult] = await Promise.allSettled([
+      this.fetchEnglish(word),
+      this.fetchChinese(word)
+    ]);
+
+    const enDefs = enResult.status === 'fulfilled' ? enResult.value : [];
+    const zhText = zhResult.status === 'fulfilled' ? zhResult.value : null;
+
+    // Build popup content
+    let html = '';
+
+    if (zhText) {
+      html += `<div class="lookup-section-label">中文翻譯</div>
+               <div class="lookup-zh">${zhText}</div>`;
+    }
+
+    if (enDefs.length > 0) {
+      html += `<div class="lookup-section-label">English Definition</div>`;
+      enDefs.slice(0, 3).forEach(d => {
+        html += `<div class="lookup-en">${d}</div>`;
+      });
+    } else if (vocabEntry) {
+      html += `<div class="lookup-section-label">English Definition</div>`;
+      vocabEntry.definitions.slice(0, 2).forEach(d => {
+        html += `<div class="lookup-en">${d}</div>`;
+      });
+    }
+
+    if (!zhText && enDefs.length === 0 && !vocabEntry) {
+      html += `<div class="lookup-error">查無此字，請確認拼字是否正確。</div>`;
+    }
+
+    const inWB = vocabEntry && Store.isInWordbook(vocabEntry.id);
+    html += `<div class="lookup-actions">`;
+    if (vocabEntry) {
+      html += `<button class="btn btn-primary btn-sm" id="lookupWbBtn">
+        ${inWB ? '★ 已在單字簿' : '☆ 加入單字簿'}
+      </button>`;
+    } else {
+      // Word not in vocabulary yet — offer to create a minimal entry
+      html += `<button class="btn btn-outline btn-sm" id="lookupAddBtn">+ 加入單字簿</button>`;
+    }
+    html += `<button class="btn btn-ghost btn-sm" id="lookupSpeakBtn">🔊</button>`;
+    html += `</div>`;
+
+    body.innerHTML = html;
+    this.position(popup, x, y); // re-position after content renders
+
+    // Bind buttons
+    document.getElementById('lookupSpeakBtn')?.addEventListener('click', () => TTS.speak(word));
+
+    const wbBtn = document.getElementById('lookupWbBtn');
+    if (wbBtn && vocabEntry) {
+      if (inWB) {
+        wbBtn.disabled = true;
+      } else {
+        wbBtn.addEventListener('click', () => {
+          Store.addToWordbook(vocabEntry.id);
+          wbBtn.textContent = '★ 已在單字簿';
+          wbBtn.disabled = true;
+          showToast(`已加入單字簿 ★「${word}」`);
+          renderWordbook();
+          renderBrowse();
+        });
+      }
+    }
+
+    const addBtn = document.getElementById('lookupAddBtn');
+    if (addBtn) {
+      addBtn.addEventListener('click', () => {
+        // Build a minimal entry from lookup results
+        const defText = enDefs[0] || word;
+        const entry = Parser.buildEntry(word, defText);
+        if (zhText) entry.zhNotes = zhText;
+        Store.vocabulary.push(entry);
+        Store.addToWordbook(entry.id);
+        Store.save();
+        updateVocabCount();
+        addBtn.textContent = '★ 已加入單字簿';
+        addBtn.disabled = true;
+        showToast(`已加入單字簿 ★「${word}」`);
+        renderBrowse();
+        renderWordbook();
+      });
+    }
+  },
+
+  async fetchEnglish(word) {
+    const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    const defs = [];
+    for (const entry of data) {
+      for (const meaning of entry.meanings || []) {
+        for (const def of meaning.definitions || []) {
+          if (def.definition) defs.push(`(${meaning.partOfSpeech}) ${def.definition}`);
+          if (defs.length >= 4) return defs;
+        }
+      }
+    }
+    return defs;
+  },
+
+  async fetchChinese(word) {
+    const res = await fetch(
+      `https://api.mymemory.translated.net/get?q=${encodeURIComponent(word)}&langpair=en|zh-TW`
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const translated = data?.responseData?.translatedText;
+    // MyMemory returns the original word if it can't translate
+    if (!translated || translated.toLowerCase() === word.toLowerCase()) return null;
+    return translated;
+  },
+
+  hide() {
+    document.getElementById('lookupPopup').classList.add('hidden');
+  }
+};
+
+// ══════════════════════════════════════════════════════════════
 // TTS – Text-to-Speech
 // ══════════════════════════════════════════════════════════════
 const TTS = {
@@ -439,7 +612,7 @@ function renderBrowse() {
     const starred = Store.isInWordbook(entry.id);
     const defPreview = entry.definitions[0] || entry.raw;
     return `
-      <div class="word-card" data-id="${entry.id}" title="⌘ + 點擊查看詳情">
+      <div class="word-card" data-id="${entry.id}" title="雙擊查看詳情 ｜ ⌘+點擊查詢任何字詞">
         <div class="word-card-term">${entry.term}</div>
         <div class="word-card-def">${defPreview}</div>
         ${entry.zhNotes ? `<div class="word-card-zh">${entry.zhNotes}</div>` : ''}
@@ -455,11 +628,10 @@ function renderBrowse() {
   }).join('');
 
   grid.querySelectorAll('.word-card').forEach(card => {
-    card.addEventListener('click', e => {
-      if (e.metaKey || e.ctrlKey) {
-        const entry = Store.vocabulary.find(v => v.id === card.dataset.id);
-        if (entry) openWordModal(entry);
-      }
+    card.addEventListener('dblclick', e => {
+      e.preventDefault();
+      const entry = Store.vocabulary.find(v => v.id === card.dataset.id);
+      if (entry) openWordModal(entry);
     });
   });
 }
@@ -494,7 +666,7 @@ function renderWordbook() {
   }
 
   list.innerHTML = entries.map(entry => `
-    <div class="wb-item" data-id="${entry.id}" title="⌘ + 點擊查看詳情">
+    <div class="wb-item" data-id="${entry.id}" title="雙擊查看詳情 ｜ ⌘+點擊查詢任何字詞">
       <div class="wb-term">${entry.term}</div>
       <div class="wb-body">
         <div class="wb-def">${entry.definitions[0] || entry.raw}</div>
@@ -507,13 +679,12 @@ function renderWordbook() {
     </div>
   `).join('');
 
-  // Cmd+click (or Ctrl+click) to open modal
+  // Double-click entire row to open modal
   list.querySelectorAll('.wb-item').forEach(item => {
-    item.addEventListener('click', e => {
-      if (e.metaKey || e.ctrlKey) {
-        const entry = Store.vocabulary.find(v => v.id === item.dataset.id);
-        if (entry) openWordModal(entry);
-      }
+    item.addEventListener('dblclick', e => {
+      e.preventDefault();
+      const entry = Store.vocabulary.find(v => v.id === item.dataset.id);
+      if (entry) openWordModal(entry);
     });
   });
 }
@@ -541,17 +712,13 @@ function loadReaderText() {
   document.getElementById('readerInputArea').classList.add('hidden');
   document.getElementById('readerDisplay').classList.remove('hidden');
 
-  // Cmd+click (or Ctrl+click) on any word → open modal or show toast
+  // Cmd+click on vocab words in reader → lookup popup
   document.querySelectorAll('.reader-word').forEach(span => {
     span.addEventListener('click', e => {
       if (e.metaKey || e.ctrlKey) {
-        const id = span.dataset.id;
-        if (id) {
-          const entry = Store.vocabulary.find(v => v.id === id);
-          if (entry) openWordModal(entry);
-        } else {
-          showToast(`「${span.textContent}」不在字彙庫中`, 1800);
-        }
+        e.preventDefault();
+        e.stopPropagation();
+        Lookup.show(span.textContent.trim(), e.clientX, e.clientY);
       }
     });
   });
@@ -937,9 +1104,32 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target === e.currentTarget) closeModal();
   });
 
+  // ── Lookup popup: close ──
+  document.getElementById('lookupClose').addEventListener('click', () => Lookup.hide());
+
+  // ── Global Cmd+click → lookup any word ──
+  document.addEventListener('click', e => {
+    if (!(e.metaKey || e.ctrlKey)) return;
+    // Don't intercept clicks on buttons, inputs, modals, or the popup itself
+    const tag = e.target.tagName;
+    if (['BUTTON','INPUT','TEXTAREA','SELECT','A'].includes(tag)) return;
+    if (e.target.closest('#wordModal') || e.target.closest('#lookupPopup')) return;
+
+    e.preventDefault();
+    const word = Lookup.wordAtPoint(e.clientX, e.clientY);
+    if (word) Lookup.show(word, e.clientX, e.clientY);
+  });
+
+  // Close lookup popup when clicking elsewhere (without Cmd)
+  document.addEventListener('click', e => {
+    if (e.metaKey || e.ctrlKey) return;
+    if (!e.target.closest('#lookupPopup')) Lookup.hide();
+  });
+
   // ── Expose for inline onclick ──
   window.TTS = TTS;
   window.Store = Store;
+  window.Lookup = Lookup;
   window.openWordModal = openWordModal;
   window.toggleWordbook = toggleWordbook;
   window.deleteWord = deleteWord;
