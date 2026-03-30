@@ -330,7 +330,7 @@ function openWordModal(entry) {
       <button class="btn btn-primary btn-sm" id="modalWbBtn">
         ${inWB ? '★ 從 Wordbook 移除' : '☆ 加入 Wordbook'}
       </button>
-      <button class="btn btn-ghost btn-sm" onclick="TTS.speak(${JSON.stringify(entry.definitions.join('. '))})">
+      <button class="btn btn-ghost btn-sm" id="modalSpeakDefBtn">
         🔊 朗讀定義
       </button>
       <button class="btn btn-danger btn-sm" id="modalDeleteBtn">🗑 刪除單字</button>
@@ -355,6 +355,10 @@ function openWordModal(entry) {
     openWordModal(entry);
     renderBrowse();
     renderWordbook();
+  };
+
+  document.getElementById('modalSpeakDefBtn').onclick = () => {
+    TTS.speak(entry.definitions.join('. '));
   };
 
   document.getElementById('modalDeleteBtn').onclick = () => {
@@ -451,7 +455,8 @@ function renderBrowse() {
   }).join('');
 
   grid.querySelectorAll('.word-card').forEach(card => {
-    card.addEventListener('dblclick', () => {
+    card.addEventListener('dblclick', e => {
+      e.preventDefault(); // prevent text selection on double-click
       const entry = Store.vocabulary.find(v => v.id === card.dataset.id);
       if (entry) openWordModal(entry);
     });
@@ -488,20 +493,27 @@ function renderWordbook() {
   }
 
   list.innerHTML = entries.map(entry => `
-    <div class="wb-item">
-      <div class="wb-term" ondblclick="openWordModal(Store.vocabulary.find(v=>v.id==='${entry.id}'))" title="雙擊查看詳情">
-        ${entry.term}
-      </div>
+    <div class="wb-item" data-id="${entry.id}" title="雙擊查看詳情">
+      <div class="wb-term">${entry.term}</div>
       <div class="wb-body">
         <div class="wb-def">${entry.definitions[0] || entry.raw}</div>
         ${entry.zhNotes ? `<div class="wb-zh">${entry.zhNotes}</div>` : ''}
       </div>
       <div class="wb-actions">
-        <button class="btn-icon speak-btn" onclick="TTS.speak('${entry.term.replace(/'/g,"\\'")}')">🔊</button>
-        <button class="wb-remove" onclick="toggleWordbook('${entry.id}')">✕</button>
+        <button class="btn-icon speak-btn" onclick="event.stopPropagation(); TTS.speak('${entry.term.replace(/'/g,"\\'")}')">🔊</button>
+        <button class="wb-remove" onclick="event.stopPropagation(); toggleWordbook('${entry.id}')">✕</button>
       </div>
     </div>
   `).join('');
+
+  // Double-click entire row to open modal (with preventDefault to block text selection)
+  list.querySelectorAll('.wb-item').forEach(item => {
+    item.addEventListener('dblclick', e => {
+      e.preventDefault();
+      const entry = Store.vocabulary.find(v => v.id === item.dataset.id);
+      if (entry) openWordModal(entry);
+    });
+  });
 }
 
 // ══════════════════════════════════════════════════════════════
