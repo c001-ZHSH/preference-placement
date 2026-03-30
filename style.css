@@ -852,6 +852,7 @@ select:focus, input[type="number"]:focus { border-color: var(--primary); }
   white-space: nowrap;
 }
 .lookup-dict-trans { color: var(--text); font-weight: 600; }
+.lookup-zh-context { font-size: .875rem; font-weight: 400; color: var(--text-2); }
 
 .lookup-actions { margin-top: 14px; display: flex; gap: 8px; }
 
