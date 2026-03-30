@@ -330,7 +330,11 @@ select:focus, input[type="number"]:focus { border-color: var(--primary); }
   box-shadow: var(--shadow-md);
   transform: translateY(-2px);
 }
-.word-card { cursor: pointer; }  /* indicate double-click */
+.word-card {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
 
 .word-card-term {
   font-size: 1.05rem;
@@ -432,6 +436,11 @@ select:focus, input[type="number"]:focus { border-color: var(--primary); }
   transition: border-color .15s;
 }
 .wb-item:hover { border-color: var(--primary); }
+.wb-item {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
 
 .wb-term {
   font-size: 1rem;
@@ -531,6 +540,8 @@ select:focus, input[type="number"]:focus { border-color: var(--primary); }
   color: var(--primary);
   font-weight: 600;
   border-bottom: 2px solid var(--primary);
+  user-select: none;
+  -webkit-user-select: none;
 }
 .reader-word.vocab-word:hover { background: var(--primary-light); }
 
