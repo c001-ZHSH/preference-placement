@@ -215,34 +215,67 @@ const Lookup = {
     popup.style.top  = Math.max(GAP, top)  + 'px';
   },
 
+  // Extract surrounding sentence from the clicked position
+  sentenceAtPoint(x, y) {
+    let node = null, offset = 0;
+    if (document.caretRangeFromPoint) {
+      const r = document.caretRangeFromPoint(x, y);
+      if (r) { node = r.startContainer; offset = r.startOffset; }
+    } else if (document.caretPositionFromPoint) {
+      const pos = document.caretPositionFromPoint(x, y);
+      if (pos) { node = pos.offsetNode; offset = pos.offset; }
+    }
+    if (!node || node.nodeType !== Node.TEXT_NODE) return null;
+
+    // Collect text from nearby sibling/parent text nodes (up to ~300 chars)
+    const el = node.parentElement;
+    return (el?.textContent || '').trim().slice(0, 300) || null;
+  },
+
   async show(word, x, y) {
     if (!word || word.length < 2) return;
-    const popup   = document.getElementById('lookupPopup');
-    const body    = document.getElementById('lookupBody');
-    const wordEl  = document.getElementById('lookupWord');
+    const popup  = document.getElementById('lookupPopup');
+    const body   = document.getElementById('lookupBody');
+    const wordEl = document.getElementById('lookupWord');
 
     wordEl.textContent = word;
     body.innerHTML = '<div class="lookup-loading">查詢中…</div>';
     this.position(popup, x, y);
 
-    // Check if word is in our vocabulary first
+    const sentence   = this.sentenceAtPoint(x, y);
     const vocabEntry = Store.findByTerm(word);
 
-    // Fetch English definition + Chinese translation in parallel
+    // Fetch all data in parallel
     const [enResult, zhResult] = await Promise.allSettled([
       this.fetchEnglish(word),
-      this.fetchChinese(word)
+      this.fetchChinese(word, sentence)
     ]);
 
     const enDefs = enResult.status === 'fulfilled' ? enResult.value : [];
-    const zhText = zhResult.status === 'fulfilled' ? zhResult.value : null;
+    const zhData = zhResult.status === 'fulfilled' ? zhResult.value : null;
 
     // Build popup content
     let html = '';
 
-    if (zhText) {
-      html += `<div class="lookup-section-label">中文翻譯</div>
-               <div class="lookup-zh">${zhText}</div>`;
+    if (zhData) {
+      // Context-based translation (from full sentence)
+      if (zhData.context) {
+        html += `<div class="lookup-section-label">語境翻譯</div>
+                 <div class="lookup-zh">${zhData.context}</div>`;
+      }
+      // Dictionary translations by part of speech
+      if (zhData.dict && zhData.dict.length > 0) {
+        html += `<div class="lookup-section-label">字典翻譯</div>`;
+        zhData.dict.forEach(({ pos, translations }) => {
+          html += `<div class="lookup-dict-row">
+            <span class="lookup-pos">${pos}</span>
+            <span class="lookup-dict-trans">${translations.join('、')}</span>
+          </div>`;
+        });
+      } else if (zhData.simple) {
+        html += `<div class="lookup-section-label">中文翻譯</div>
+                 <div class="lookup-zh">${zhData.simple}</div>`;
+      }
     }
 
     if (enDefs.length > 0) {
@@ -257,7 +290,7 @@ const Lookup = {
       });
     }
 
-    if (!zhText && enDefs.length === 0 && !vocabEntry) {
+    if (!zhData && enDefs.length === 0 && !vocabEntry) {
       html += `<div class="lookup-error">查無此字，請確認拼字是否正確。</div>`;
     }
 
@@ -268,14 +301,13 @@ const Lookup = {
         ${inWB ? '★ 已在單字簿' : '☆ 加入單字簿'}
       </button>`;
     } else {
-      // Word not in vocabulary yet — offer to create a minimal entry
       html += `<button class="btn btn-outline btn-sm" id="lookupAddBtn">+ 加入單字簿</button>`;
     }
     html += `<button class="btn btn-ghost btn-sm" id="lookupSpeakBtn">🔊</button>`;
     html += `</div>`;
 
     body.innerHTML = html;
-    this.position(popup, x, y); // re-position after content renders
+    this.position(popup, x, y);
 
     // Bind buttons
     document.getElementById('lookupSpeakBtn')?.addEventListener('click', () => TTS.speak(word));
@@ -299,10 +331,10 @@ const Lookup = {
     const addBtn = document.getElementById('lookupAddBtn');
     if (addBtn) {
       addBtn.addEventListener('click', () => {
-        // Build a minimal entry from lookup results
         const defText = enDefs[0] || word;
         const entry = Parser.buildEntry(word, defText);
-        if (zhText) entry.zhNotes = zhText;
+        const zhNote = zhData?.context || zhData?.dict?.[0]?.translations?.[0] || zhData?.simple || '';
+        if (zhNote) entry.zhNotes = zhNote;
         Store.vocabulary.push(entry);
         Store.addToWordbook(entry.id);
         Store.save();
@@ -317,32 +349,70 @@ const Lookup = {
   },
 
   async fetchEnglish(word) {
-    const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
-    if (!res.ok) return [];
-    const data = await res.json();
-    const defs = [];
-    for (const entry of data) {
-      for (const meaning of entry.meanings || []) {
-        for (const def of meaning.definitions || []) {
-          if (def.definition) defs.push(`(${meaning.partOfSpeech}) ${def.definition}`);
-          if (defs.length >= 4) return defs;
+    try {
+      const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      const defs = [];
+      for (const entry of data) {
+        for (const meaning of entry.meanings || []) {
+          for (const def of meaning.definitions || []) {
+            if (def.definition) defs.push(`(${meaning.partOfSpeech}) ${def.definition}`);
+            if (defs.length >= 4) return defs;
+          }
         }
       }
-    }
-    return defs;
+      return defs;
+    } catch(e) { return []; }
   },
 
-  async fetchChinese(word) {
+  async fetchChinese(word, sentence) {
     try {
+      // Fetch word translation with dictionary entries (dt=t for simple, dt=bd for bilingual dict)
       const res = await fetch(
-        `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-TW&dt=t&q=${encodeURIComponent(word)}`
+        `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-TW&dt=t&dt=bd&q=${encodeURIComponent(word)}`
       );
       if (!res.ok) return null;
       const data = await res.json();
-      // Response: [ [ ["翻譯", "原文", ...], ... ], ... ]
-      const translated = data?.[0]?.[0]?.[0]?.trim();
-      if (!translated || translated.toLowerCase() === word.toLowerCase()) return null;
-      return translated;
+
+      // Simple translation (dt=t)
+      const simple = data?.[0]?.[0]?.[0]?.trim() || null;
+
+      // Bilingual dictionary (dt=bd): [[pos, [[trans, score], ...]], ...]
+      const bdRaw = data?.[1];
+      const dict = [];
+      if (Array.isArray(bdRaw)) {
+        const POS_MAP = {
+          noun:'名詞', verb:'動詞', adjective:'形容詞', adverb:'副詞',
+          pronoun:'代名詞', preposition:'介系詞', conjunction:'連接詞',
+          interjection:'感嘆詞', article:'冠詞', exclamation:'感嘆詞',
+          abbreviation:'縮寫', suffix:'字尾', prefix:'字首'
+        };
+        for (const [pos, entries] of bdRaw) {
+          if (!Array.isArray(entries)) continue;
+          const translations = entries.slice(0, 4).map(e => e[0]).filter(Boolean);
+          if (translations.length) {
+            dict.push({ pos: POS_MAP[pos] || pos, translations });
+          }
+        }
+      }
+
+      // Context translation: translate the surrounding sentence
+      let context = null;
+      if (sentence && sentence.split(' ').length > 2) {
+        try {
+          const ctxRes = await fetch(
+            `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-TW&dt=t&q=${encodeURIComponent(sentence)}`
+          );
+          if (ctxRes.ok) {
+            const ctxData = await ctxRes.json();
+            context = ctxData?.[0]?.map(seg => seg?.[0]).filter(Boolean).join('') || null;
+          }
+        } catch(e) { /* ignore */ }
+      }
+
+      if (!simple && dict.length === 0 && !context) return null;
+      return { simple, dict, context };
     } catch(e) {
       return null;
     }

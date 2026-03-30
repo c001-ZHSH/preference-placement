@@ -835,6 +835,24 @@ select:focus, input[type="number"]:focus { border-color: var(--primary); }
 
 .lookup-error { font-size: .85rem; color: var(--error); padding: 4px 0; }
 
+.lookup-dict-row {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin-bottom: 4px;
+  font-size: .85rem;
+}
+.lookup-pos {
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--primary);
+  background: var(--primary-light);
+  border-radius: 4px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+.lookup-dict-trans { color: var(--text); font-weight: 600; }
+
 .lookup-actions { margin-top: 14px; display: flex; gap: 8px; }
 
 /* ============================================================
