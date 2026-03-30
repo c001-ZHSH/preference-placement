@@ -439,7 +439,7 @@ function renderBrowse() {
     const starred = Store.isInWordbook(entry.id);
     const defPreview = entry.definitions[0] || entry.raw;
     return `
-      <div class="word-card" data-id="${entry.id}" title="雙擊查看詳情">
+      <div class="word-card" data-id="${entry.id}" title="⌘ + 點擊查看詳情">
         <div class="word-card-term">${entry.term}</div>
         <div class="word-card-def">${defPreview}</div>
         ${entry.zhNotes ? `<div class="word-card-zh">${entry.zhNotes}</div>` : ''}
@@ -455,10 +455,11 @@ function renderBrowse() {
   }).join('');
 
   grid.querySelectorAll('.word-card').forEach(card => {
-    card.addEventListener('dblclick', e => {
-      e.preventDefault(); // prevent text selection on double-click
-      const entry = Store.vocabulary.find(v => v.id === card.dataset.id);
-      if (entry) openWordModal(entry);
+    card.addEventListener('click', e => {
+      if (e.metaKey || e.ctrlKey) {
+        const entry = Store.vocabulary.find(v => v.id === card.dataset.id);
+        if (entry) openWordModal(entry);
+      }
     });
   });
 }
@@ -493,7 +494,7 @@ function renderWordbook() {
   }
 
   list.innerHTML = entries.map(entry => `
-    <div class="wb-item" data-id="${entry.id}" title="雙擊查看詳情">
+    <div class="wb-item" data-id="${entry.id}" title="⌘ + 點擊查看詳情">
       <div class="wb-term">${entry.term}</div>
       <div class="wb-body">
         <div class="wb-def">${entry.definitions[0] || entry.raw}</div>
@@ -506,12 +507,13 @@ function renderWordbook() {
     </div>
   `).join('');
 
-  // Double-click entire row to open modal (with preventDefault to block text selection)
+  // Cmd+click (or Ctrl+click) to open modal
   list.querySelectorAll('.wb-item').forEach(item => {
-    item.addEventListener('dblclick', e => {
-      e.preventDefault();
-      const entry = Store.vocabulary.find(v => v.id === item.dataset.id);
-      if (entry) openWordModal(entry);
+    item.addEventListener('click', e => {
+      if (e.metaKey || e.ctrlKey) {
+        const entry = Store.vocabulary.find(v => v.id === item.dataset.id);
+        if (entry) openWordModal(entry);
+      }
     });
   });
 }
@@ -539,16 +541,17 @@ function loadReaderText() {
   document.getElementById('readerInputArea').classList.add('hidden');
   document.getElementById('readerDisplay').classList.remove('hidden');
 
-  // Double-click on vocabulary words → open modal
+  // Cmd+click (or Ctrl+click) on any word → open modal or show toast
   document.querySelectorAll('.reader-word').forEach(span => {
-    span.addEventListener('dblclick', e => {
-      e.preventDefault(); // prevent text selection
-      const id = span.dataset.id;
-      if (id) {
-        const entry = Store.vocabulary.find(v => v.id === id);
-        if (entry) openWordModal(entry);
-      } else {
-        showToast(`「${span.textContent}」不在字彙庫中`, 1800);
+    span.addEventListener('click', e => {
+      if (e.metaKey || e.ctrlKey) {
+        const id = span.dataset.id;
+        if (id) {
+          const entry = Store.vocabulary.find(v => v.id === id);
+          if (entry) openWordModal(entry);
+        } else {
+          showToast(`「${span.textContent}」不在字彙庫中`, 1800);
+        }
       }
     });
   });
