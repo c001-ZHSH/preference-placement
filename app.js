@@ -47,18 +47,99 @@ const Store = {
   vocabulary: [],  // { id, term, raw, definitions, examples }
   wordbook: [],    // { id, termId, addedAt }
 
+  // ── Project management ──
+  projects: [],          // [{ id, name, createdAt }]
+  currentProjectId: null,
+
+  _projectKey(pid, suffix) { return `vm_proj_${pid}_${suffix}`; },
+
+  loadProjectList() {
+    try {
+      const p = localStorage.getItem('vm_projects');
+      if (p) this.projects = JSON.parse(p);
+      this.currentProjectId = localStorage.getItem('vm_current_project') || null;
+      // Auto-migrate: if there is old data with no project, create a default project
+      if (this.projects.length === 0) {
+        const oldV = localStorage.getItem('vm_vocab');
+        const oldW = localStorage.getItem('vm_wordbook');
+        if (oldV && JSON.parse(oldV).length > 0) {
+          const proj = { id: uid(), name: '我的單字', createdAt: new Date().toISOString() };
+          this.projects.push(proj);
+          localStorage.setItem(this._projectKey(proj.id, 'vocab'), oldV);
+          localStorage.setItem(this._projectKey(proj.id, 'wb'), oldW || '[]');
+          this.currentProjectId = proj.id;
+          this.saveProjectList();
+          // Clean old keys
+          localStorage.removeItem('vm_vocab');
+          localStorage.removeItem('vm_wordbook');
+        }
+      }
+    } catch(e) { console.warn('Project list load error', e); }
+  },
+
+  saveProjectList() {
+    localStorage.setItem('vm_projects', JSON.stringify(this.projects));
+    if (this.currentProjectId) localStorage.setItem('vm_current_project', this.currentProjectId);
+  },
+
+  createProject(name) {
+    const proj = { id: uid(), name: name.trim(), createdAt: new Date().toISOString() };
+    this.projects.push(proj);
+    localStorage.setItem(this._projectKey(proj.id, 'vocab'), '[]');
+    localStorage.setItem(this._projectKey(proj.id, 'wb'), '[]');
+    this.saveProjectList();
+    return proj;
+  },
+
+  switchProject(pid) {
+    // Save current first
+    if (this.currentProjectId) this.save();
+    this.currentProjectId = pid;
+    localStorage.setItem('vm_current_project', pid);
+    this.load();
+  },
+
+  renameProject(pid, newName) {
+    const p = this.projects.find(p => p.id === pid);
+    if (p) { p.name = newName.trim(); this.saveProjectList(); }
+  },
+
+  deleteProject(pid) {
+    this.projects = this.projects.filter(p => p.id !== pid);
+    localStorage.removeItem(this._projectKey(pid, 'vocab'));
+    localStorage.removeItem(this._projectKey(pid, 'wb'));
+    this.saveProjectList();
+    if (this.currentProjectId === pid) {
+      this.currentProjectId = this.projects.length > 0 ? this.projects[0].id : null;
+      if (this.currentProjectId) {
+        localStorage.setItem('vm_current_project', this.currentProjectId);
+        this.load();
+      } else {
+        this.vocabulary = [];
+        this.wordbook = [];
+      }
+    }
+  },
+
+  getCurrentProjectName() {
+    const p = this.projects.find(p => p.id === this.currentProjectId);
+    return p ? p.name : '';
+  },
+
   load() {
     try {
-      const v = localStorage.getItem('vm_vocab');
-      const w = localStorage.getItem('vm_wordbook');
-      if (v) this.vocabulary = JSON.parse(v);
-      if (w) this.wordbook   = JSON.parse(w);
+      if (!this.currentProjectId) { this.vocabulary = []; this.wordbook = []; return; }
+      const v = localStorage.getItem(this._projectKey(this.currentProjectId, 'vocab'));
+      const w = localStorage.getItem(this._projectKey(this.currentProjectId, 'wb'));
+      this.vocabulary = v ? JSON.parse(v) : [];
+      this.wordbook   = w ? JSON.parse(w) : [];
     } catch(e) { console.warn('Load error', e); }
   },
 
   save() {
-    localStorage.setItem('vm_vocab',   JSON.stringify(this.vocabulary));
-    localStorage.setItem('vm_wordbook', JSON.stringify(this.wordbook));
+    if (!this.currentProjectId) return;
+    localStorage.setItem(this._projectKey(this.currentProjectId, 'vocab'), JSON.stringify(this.vocabulary));
+    localStorage.setItem(this._projectKey(this.currentProjectId, 'wb'),    JSON.stringify(this.wordbook));
   },
 
   addToWordbook(termId) {
@@ -281,14 +362,12 @@ const Lookup = {
     const phrase     = this.detectPhrase(word, sentence);
     const vocabEntry = Store.findByTerm(word);
 
-    // Fetch English defs + Chinese data in parallel
-    const [enResult, zhResult, phraseResult] = await Promise.allSettled([
-      this.fetchEnglish(word),
-      this.fetchChineseFull(word, sentence),
+    // Fetch dictionary + phrase in parallel
+    const [zhResult, phraseResult] = await Promise.allSettled([
+      this.fetchChineseFull(word, null),
       phrase ? this.fetchPhraseTranslation(phrase) : Promise.resolve(null)
     ]);
 
-    const enDefs      = enResult.status    === 'fulfilled' ? enResult.value    : [];
     const zhData      = zhResult.status    === 'fulfilled' ? zhResult.value    : null;
     const phraseData  = phraseResult.status === 'fulfilled' ? phraseResult.value : null;
 
@@ -301,7 +380,7 @@ const Lookup = {
                <div class="lookup-zh">${phraseData}</div>`;
     }
 
-    // 2. Dictionary: POS-grouped Chinese meanings (translated from EN definitions)
+    // 2. Dictionary: POS-grouped Chinese meanings
     if (zhData?.dict?.length > 0) {
       html += `<div class="lookup-section-label">字典翻譯</div>`;
       zhData.dict.forEach(({ pos, zh }) => {
@@ -312,22 +391,7 @@ const Lookup = {
       });
     }
 
-    // 3. Context sentence translation
-    if (zhData?.context) {
-      html += `<div class="lookup-section-label">語境翻譯</div>
-               <div class="lookup-zh lookup-zh-context">${zhData.context}</div>`;
-    }
-
-    // 4. English definitions
-    const defsToShow = enDefs.length > 0
-      ? enDefs.slice(0, 3)
-      : (vocabEntry ? vocabEntry.definitions.slice(0, 2) : []);
-    if (defsToShow.length > 0) {
-      html += `<div class="lookup-section-label">English Definition</div>`;
-      defsToShow.forEach(d => { html += `<div class="lookup-en">${d}</div>`; });
-    }
-
-    if (!zhData && enDefs.length === 0 && !vocabEntry && !phraseData) {
+    if (!zhData && !phraseData) {
       html += `<div class="lookup-error">查無此字，請確認拼字是否正確。</div>`;
     }
 
@@ -366,17 +430,24 @@ const Lookup = {
 
     const addBtn = document.getElementById('lookupAddBtn');
     if (addBtn) {
-      addBtn.addEventListener('click', () => {
-        const defText = enDefs[0] || word;
+      addBtn.addEventListener('click', async () => {
+        addBtn.disabled = true;
+        addBtn.textContent = '加入中…';
+        // Fetch English definition for a proper vocab entry
+        let defText = word;
+        try {
+          const defs = await Lookup.fetchEnglish(word);
+          if (defs && defs.length > 0) defText = defs.join('; ');
+        } catch(e) { /* use word as fallback */ }
         const entry   = Parser.buildEntry(word, defText);
-        const zhNote  = zhData?.dict?.[0]?.zh || zhData?.context || '';
+        const zhNote  = zhData?.dict?.map(d => (d.pos ? d.pos + '：' : '') + d.zh).join('｜') || '';
         if (zhNote) entry.zhNotes = zhNote;
         Store.vocabulary.push(entry);
         Store.addToWordbook(entry.id);
         Store.save();
         updateVocabCount();
+        renderProjectSelector();
         addBtn.textContent = '★ 已加入單字簿';
-        addBtn.disabled = true;
         showToast(`已加入單字簿 ★「${word}」`);
         renderBrowse(); renderWordbook();
       });
@@ -402,7 +473,7 @@ const Lookup = {
     } catch(e) { return []; }
   },
 
-  // Fetch Chinese data: dictionary by POS (via translating EN defs) + context sentence
+  // Fetch Chinese data: bilingual dictionary (dt=bd) + context sentence
   async fetchChineseFull(word, sentence) {
     try {
       const POS_MAP = {
@@ -412,44 +483,42 @@ const Lookup = {
         abbreviation:'縮寫'
       };
 
-      // Get English defs grouped by POS from dictionary API
-      let dictGroups = [];
-      try {
-        const res  = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
-        if (res.ok) {
-          const data = await res.json();
-          const byPos = {};
-          for (const entry of data) {
-            for (const meaning of entry.meanings || []) {
-              const pos = meaning.partOfSpeech;
-              if (!byPos[pos]) byPos[pos] = [];
-              const def = meaning.definitions?.[0]?.definition;
-              // Use shortDefinition or first sentence only (≤60 chars)
-              if (def && byPos[pos].length === 0) {
-                byPos[pos].push(def.split('.')[0].slice(0, 80));
-              }
-            }
+      // dt=bd gives actual dictionary equivalents per POS (not translated definitions)
+      const res = await fetch(
+        `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-TW&dt=t&dt=bd&q=${encodeURIComponent(word)}`
+      );
+      if (!res.ok) return null;
+      const data = await res.json();
+
+      // dt=bd structure: data[1] = [[pos, shortList, detailedList, word, score], ...]
+      // detailedList = [[chTerm, [enEquiv, ...]], ...]
+      const bdRaw = data?.[1];
+      const dict  = [];
+      if (Array.isArray(bdRaw)) {
+        for (const item of bdRaw) {
+          const pos         = item[0];
+          const detailList  = item[2]; // [[chTerm, [enEquivs]], ...]
+          if (!Array.isArray(detailList)) continue;
+          // Take top 4 Chinese terms that are 2+ chars and not punctuation-only
+          const translations = detailList
+            .map(e => e[0])
+            .filter(t => t && /[\u4e00-\u9fff]/.test(t) && t.replace(/[^\u4e00-\u9fff]/g,'').length >= 2)
+            .slice(0, 4);
+          if (translations.length) {
+            dict.push({ pos: POS_MAP[pos] || pos, zh: translations.join('、') });
           }
-          dictGroups = Object.entries(byPos).slice(0, 3); // max 3 POS
         }
-      } catch(e) { /* ignore */ }
+      }
 
-      // Translate each POS's representative definition to Chinese
-      const dict = [];
-      await Promise.all(dictGroups.map(async ([pos, defs]) => {
-        if (!defs[0]) return;
-        try {
-          const r = await fetch(
-            `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-TW&dt=t&q=${encodeURIComponent(defs[0])}`
-          );
-          if (!r.ok) return;
-          const d = await r.json();
-          const zh = d?.[0]?.map(s => s?.[0]).filter(Boolean).join('') || '';
-          if (zh) dict.push({ pos: POS_MAP[pos] || pos, zh });
-        } catch(e) { /* ignore */ }
-      }));
+      // Fallback: simple translation if bd gave nothing
+      if (dict.length === 0) {
+        const simple = data?.[0]?.[0]?.[0]?.trim();
+        if (simple && simple !== word && /[\u4e00-\u9fff]/.test(simple)) {
+          dict.push({ pos: '', zh: simple });
+        }
+      }
 
-      // Context: translate surrounding sentence
+      // Context: translate the surrounding sentence
       let context = null;
       if (sentence && sentence.trim().split(/\s+/).length > 2) {
         try {
@@ -488,15 +557,45 @@ const Lookup = {
 };
 
 // ══════════════════════════════════════════════════════════════
-// TTS – Text-to-Speech
+// TTS – Text-to-Speech (prefer natural / premium voices)
 // ══════════════════════════════════════════════════════════════
 const TTS = {
+  _voice: null,
+  _resolved: false,
+
+  _pickVoice() {
+    if (this._resolved) return;
+    const voices = speechSynthesis.getVoices();
+    if (voices.length === 0) return;           // voices not loaded yet
+    this._resolved = true;
+
+    // Rank preferences: Premium / Enhanced macOS voices → any en voice
+    const prefs = ['samantha','daniel','karen','moira','alex','fiona','tessa'];
+    // 1. Try premium (name contains "Premium" or "Enhanced")
+    let v = voices.find(v => /en[_-]/i.test(v.lang) && /(premium|enhanced)/i.test(v.name));
+    // 2. Try preferred names
+    if (!v) {
+      for (const p of prefs) {
+        v = voices.find(vv => vv.lang.startsWith('en') && vv.name.toLowerCase().includes(p));
+        if (v) break;
+      }
+    }
+    // 3. Any en-US voice
+    if (!v) v = voices.find(vv => vv.lang === 'en-US');
+    // 4. Any en voice
+    if (!v) v = voices.find(vv => vv.lang.startsWith('en'));
+    this._voice = v || null;
+  },
+
   speak(text) {
     if (!window.speechSynthesis) return;
     window.speechSynthesis.cancel();
+    this._pickVoice();
     const utter = new SpeechSynthesisUtterance(text);
     utter.lang = 'en-US';
-    utter.rate = 0.9;
+    utter.rate = 0.92;
+    utter.pitch = 1.0;
+    if (this._voice) utter.voice = this._voice;
     window.speechSynthesis.speak(utter);
   }
 };
@@ -626,6 +725,10 @@ function updateVocabCount() {
   const n = Store.vocabulary.length;
   document.getElementById('vocabCount').textContent =
     n > 0 ? `${n} word${n !== 1 ? 's' : ''}` : '0 words';
+  const projNameEl = document.getElementById('currentProjectName');
+  if (projNameEl) {
+    projNameEl.textContent = Store.getCurrentProjectName();
+  }
 }
 
 // ── Word Detail Modal ─────────────────────────────────────────
@@ -638,8 +741,14 @@ function openWordModal(entry) {
       <button class="btn-icon speak-btn" onclick="TTS.speak('${entry.term.replace(/'/g,"\\'")}')">🔊</button>
     </div>
 
-    <div class="modal-section-label">English Definition${entry.definitions.length > 1 ? 's' : ''}</div>
+    <div class="modal-section-label">
+      English Definition${entry.definitions.length > 1 ? 's' : ''}
+      <button class="btn-toggle-zh" id="toggleZhDefs">顯示中文翻譯 ▼</button>
+    </div>
     ${entry.definitions.map(d => `<p class="modal-def">${d}</p>`).join('')}
+    <div class="modal-zh-defs hidden" id="modalZhDefs">
+      <div class="zh-defs-loading">翻譯中…</div>
+    </div>
 
     ${entry.examples.length ? `
       <div class="modal-section-label">Examples</div>
@@ -687,6 +796,40 @@ function openWordModal(entry) {
   document.getElementById('modalDeleteBtn').onclick = () => {
     deleteWord(entry.id);
   };
+
+  // Toggle collapsible Chinese translation of definitions
+  const toggleBtn = document.getElementById('toggleZhDefs');
+  const zhDefsDiv = document.getElementById('modalZhDefs');
+  let zhDefsFetched = false;
+
+  toggleBtn.onclick = async () => {
+    const isHidden = zhDefsDiv.classList.contains('hidden');
+    if (isHidden) {
+      zhDefsDiv.classList.remove('hidden');
+      toggleBtn.textContent = '隱藏中文翻譯 ▲';
+      if (!zhDefsFetched) {
+        zhDefsFetched = true;
+        try {
+          const text = entry.definitions.join('. ');
+          const r = await fetch(
+            `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=zh-TW&dt=t&q=${encodeURIComponent(text.slice(0, 500))}`
+          );
+          if (r.ok) {
+            const d = await r.json();
+            const zh = d?.[0]?.map(s => s?.[0]).filter(Boolean).join('') || '翻譯失敗';
+            zhDefsDiv.innerHTML = `<p class="zh-defs-text">${zh}</p>`;
+          } else {
+            zhDefsDiv.innerHTML = '<p class="zh-defs-text">翻譯失敗</p>';
+          }
+        } catch(e) {
+          zhDefsDiv.innerHTML = '<p class="zh-defs-text">翻譯失敗</p>';
+        }
+      }
+    } else {
+      zhDefsDiv.classList.add('hidden');
+      toggleBtn.textContent = '顯示中文翻譯 ▼';
+    }
+  };
 }
 
 function saveWordNotes(termId, notes) {
@@ -713,11 +856,13 @@ function deleteWord(termId) {
 
 function clearVocabulary() {
   if (Store.vocabulary.length === 0) return;
-  if (!confirm(`確定要刪除全部 ${Store.vocabulary.length} 個單字嗎？此操作無法復原。`)) return;
+  const name = Store.getCurrentProjectName() || '目前專案';
+  if (!confirm(`確定要刪除「${name}」中全部 ${Store.vocabulary.length} 個單字嗎？此操作無法復原。`)) return;
   Store.vocabulary = [];
   Store.wordbook   = [];
   Store.save();
   updateVocabCount();
+  renderProjectSelector();
   renderBrowse();
   renderWordbook();
   showToast('已清除所有單字');
@@ -725,6 +870,90 @@ function clearVocabulary() {
 
 function closeModal() {
   document.getElementById('wordModal').classList.add('hidden');
+}
+
+// ══════════════════════════════════════════════════════════════
+// Render: Project Selector
+// ══════════════════════════════════════════════════════════════
+function renderProjectSelector() {
+  const container = document.getElementById('projectSelector');
+  if (!container) return;
+
+  if (Store.projects.length === 0) {
+    container.innerHTML = `<div class="project-empty">
+      <p>尚無專案。匯入單字時將建立新專案。</p>
+    </div>`;
+    return;
+  }
+
+  let html = `<div class="project-list">`;
+  Store.projects.forEach(p => {
+    const isCurrent = p.id === Store.currentProjectId;
+    const count = (() => {
+      try {
+        const v = localStorage.getItem(Store._projectKey(p.id, 'vocab'));
+        return v ? JSON.parse(v).length : 0;
+      } catch { return 0; }
+    })();
+    html += `
+      <div class="project-item ${isCurrent ? 'active' : ''}" data-pid="${p.id}">
+        <div class="project-info">
+          <span class="project-name">${p.name}</span>
+          <span class="project-count">${count} 字</span>
+        </div>
+        <div class="project-actions">
+          <button class="btn-icon project-rename" title="重新命名" data-pid="${p.id}">✏️</button>
+          <button class="btn-icon project-delete" title="刪除專案" data-pid="${p.id}">🗑</button>
+        </div>
+      </div>`;
+  });
+  html += `</div>`;
+  container.innerHTML = html;
+
+  // Click to switch project
+  container.querySelectorAll('.project-item').forEach(el => {
+    el.addEventListener('click', e => {
+      if (e.target.closest('.project-rename') || e.target.closest('.project-delete')) return;
+      const pid = el.dataset.pid;
+      if (pid === Store.currentProjectId) return;
+      Store.switchProject(pid);
+      updateVocabCount();
+      renderProjectSelector();
+      renderBrowse();
+      renderWordbook();
+      showToast(`已切換至「${Store.getCurrentProjectName()}」`);
+    });
+  });
+
+  // Rename
+  container.querySelectorAll('.project-rename').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const pid = btn.dataset.pid;
+      const proj = Store.projects.find(p => p.id === pid);
+      const newName = prompt('輸入新名稱：', proj.name);
+      if (newName && newName.trim()) {
+        Store.renameProject(pid, newName);
+        renderProjectSelector();
+      }
+    });
+  });
+
+  // Delete
+  container.querySelectorAll('.project-delete').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const pid = btn.dataset.pid;
+      const proj = Store.projects.find(p => p.id === pid);
+      if (!confirm(`確定要刪除專案「${proj.name}」嗎？所有單字將被移除且無法復原。`)) return;
+      Store.deleteProject(pid);
+      updateVocabCount();
+      renderProjectSelector();
+      renderBrowse();
+      renderWordbook();
+      showToast(`已刪除專案「${proj.name}」`);
+    });
+  });
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -910,27 +1139,35 @@ function renderQuizQuestion() {
   document.getElementById('quizFeedback').classList.add('hidden');
   document.getElementById('quizFeedback').innerHTML = '';
   document.getElementById('checkAnswerBtn').classList.remove('hidden');
+  document.getElementById('hintBtn').classList.remove('hidden');
   document.getElementById('nextQuestionBtn').classList.add('hidden');
 
+  // Reset hint state
+  window._hintLevel = 0;
+
   if (q.type === 'def-to-word') {
+    const ansLen = q.answer.length;
+    const inputW = Math.max(120, ansLen * 16 + 32);
     card.innerHTML = `
       <div class="quiz-mode-label">Definition → Word</div>
       <div class="quiz-definition">${q.entry.definitions.join('<br>')}</div>
       ${q.entry.examples.length ? `<p style="font-size:.875rem;color:var(--text-2);font-style:italic;margin-bottom:16px;">"${q.entry.examples[0]}"</p>` : ''}
-      <input type="text" class="quiz-input" id="quizAnswer" placeholder="Type the vocabulary word…" autocomplete="off">`;
+      <div class="quiz-answer-row">
+        <input type="text" class="quiz-input" id="quizAnswer" placeholder="${'_ '.repeat(ansLen).trim()}" autocomplete="off" style="width:${inputW}px;max-width:100%;letter-spacing:2px;">
+        <span class="quiz-char-count">${ansLen} letters</span>
+      </div>`;
   } else {
     // word-to-fill: show term + definition with blanks
     let rendered = q.display;
-    let blanksHtml = '';
     q.blanks.forEach((_, i) => {
-      blanksHtml += `<input type="text" class="blank-input" id="blank-${i}" placeholder="___" autocomplete="off">`;
       rendered = rendered.replace(`__BLANK${i}__`, `<INPUT_${i}>`);
     });
-    // Build HTML for definition with inline inputs
+    // Build HTML for definition with inline inputs sized to answer
     let defHtml = rendered;
-    q.blanks.forEach((_, i) => {
+    q.blanks.forEach((blank, i) => {
+      const w = Math.max(60, blank.length * 12 + 24);
       defHtml = defHtml.replace(`<INPUT_${i}>`,
-        `<input type="text" class="blank-input" id="blank-${i}" placeholder="___" autocomplete="off">`);
+        `<input type="text" class="blank-input" id="blank-${i}" placeholder="${'_'.repeat(blank.length)}" autocomplete="off" style="width:${w}px;letter-spacing:1px;">`);
     });
 
     card.innerHTML = `
@@ -986,8 +1223,40 @@ function checkAnswer() {
 
   fb.classList.remove('hidden');
   document.getElementById('checkAnswerBtn').classList.add('hidden');
+  document.getElementById('hintBtn').classList.add('hidden');
   document.getElementById('nextQuestionBtn').classList.remove('hidden');
   updateQuizHeader();
+}
+
+function giveHint() {
+  const q = Quiz.currentQ();
+  if (!q) return;
+  window._hintLevel = (window._hintLevel || 0) + 1;
+  const level = window._hintLevel;
+
+  if (q.type === 'def-to-word') {
+    const inp = document.getElementById('quizAnswer');
+    if (!inp) return;
+    const answer = q.answer;
+    // Reveal first N letters based on hint level
+    const reveal = answer.slice(0, level);
+    inp.value = reveal;
+    inp.focus();
+    // Show hint cost
+    showToast(`提示：前 ${level} 個字母 "${reveal}"`, 1500);
+  } else {
+    // Fill-blanks: reveal first letter(s) of the first empty blank
+    for (let i = 0; i < q.blanks.length; i++) {
+      const inp = document.getElementById(`blank-${i}`);
+      if (inp && !inp.value.trim()) {
+        const reveal = q.blanks[i].slice(0, level);
+        inp.value = reveal;
+        inp.focus();
+        showToast(`提示：「${reveal}…」`, 1500);
+        break;
+      }
+    }
+  }
 }
 
 function updateQuizHeader() {
@@ -1062,6 +1331,18 @@ function doImport(text) {
     return;
   }
 
+  // If no project selected, prompt to create one
+  if (!Store.currentProjectId) {
+    const name = prompt('為這組單字命名（專案名稱）：', '');
+    if (!name || !name.trim()) {
+      showImportStatus('請先建立專案才能匯入。', 'error');
+      return;
+    }
+    const proj = Store.createProject(name);
+    Store.switchProject(proj.id);
+    renderProjectSelector();
+  }
+
   // Merge (skip exact duplicates)
   let added = 0;
   for (const e of entries) {
@@ -1071,8 +1352,9 @@ function doImport(text) {
 
   Store.save();
   updateVocabCount();
+  renderProjectSelector();
   showImportStatus(
-    `Imported ${added} new word${added !== 1 ? 's' : ''} (${entries.length - added} duplicate${entries.length - added !== 1 ? 's' : ''} skipped). Total: ${Store.vocabulary.length} words.`,
+    `已匯入 ${added} 個新單字（${entries.length - added} 個重複已略過）。專案「${Store.getCurrentProjectName()}」共 ${Store.vocabulary.length} 字。`,
     'success'
   );
   renderBrowse();
@@ -1089,9 +1371,19 @@ function showImportStatus(msg, type) {
 // Event Listeners
 // ══════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
-  Store.load();
+  // Load voices early (async on some browsers)
+  if (window.speechSynthesis) {
+    speechSynthesis.getVoices();
+    speechSynthesis.onvoiceschanged = () => TTS._pickVoice();
+  }
+
+  Store.loadProjectList();
+  if (Store.currentProjectId) {
+    Store.load();
+  }
   updateVocabCount();
-  showPage('import');
+  renderProjectSelector();
+  showPage(Store.currentProjectId ? 'import' : 'import');
 
   // ── Navigation ──
   document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -1149,6 +1441,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('clearVocabBtn').addEventListener('click', clearVocabulary);
 
+  // ── Project: new project ──
+  document.getElementById('newProjectBtn').addEventListener('click', () => {
+    const name = prompt('輸入專案名稱：', '');
+    if (!name || !name.trim()) return;
+    const proj = Store.createProject(name);
+    Store.switchProject(proj.id);
+    updateVocabCount();
+    renderProjectSelector();
+    renderBrowse();
+    renderWordbook();
+    showToast(`已建立並切換至專案「${proj.name}」`);
+  });
+
   // ── Browse: search & sort ──
   document.getElementById('searchInput').addEventListener('input', renderBrowse);
   document.getElementById('sortSelect').addEventListener('change', renderBrowse);
@@ -1205,6 +1510,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('startQuizBtn').addEventListener('click', startQuiz);
 
   document.getElementById('checkAnswerBtn').addEventListener('click', checkAnswer);
+  document.getElementById('hintBtn').addEventListener('click', giveHint);
 
   // Allow Enter key to submit answer
   document.getElementById('quizInProgress').addEventListener('keydown', e => {

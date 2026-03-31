@@ -21,6 +21,7 @@
         <button class="nav-btn" data-page="quiz">Quiz</button>
       </nav>
       <div class="header-info">
+        <span class="current-project-name" id="currentProjectName"></span>
         <span id="vocabCount">0 words</span>
       </div>
     </div>
@@ -38,6 +39,15 @@
       </div>
 
       <div class="import-container">
+
+        <!-- Project selector -->
+        <div class="card project-card">
+          <div class="project-card-header">
+            <h3>專案管理</h3>
+            <button class="btn btn-outline btn-sm" id="newProjectBtn">+ 新增專案</button>
+          </div>
+          <div id="projectSelector"></div>
+        </div>
 
         <!-- Drop zone -->
         <div class="drop-zone" id="dropZone">
@@ -237,6 +247,7 @@ Words found in your vocabulary will be underlined. Click any word to see its def
         <div class="quiz-feedback hidden" id="quizFeedback"></div>
 
         <div class="quiz-actions">
+          <button class="btn btn-outline btn-sm" id="hintBtn">💡 提示</button>
           <button class="btn btn-primary" id="checkAnswerBtn">Check Answer</button>
           <button class="btn btn-ghost hidden" id="nextQuestionBtn">Next →</button>
         </div>
