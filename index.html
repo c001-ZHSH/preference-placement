@@ -115,6 +115,9 @@
           grid.innerHTML += createWorkCard(work);
         });
 
+        // 非同步載入影片縮圖
+        loadVideoThumbnails(result.works);
+
         // 分頁
         if (result.totalPages > 1) {
           document.getElementById('pagination-container').style.display = '';

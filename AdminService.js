@@ -1,38 +1,36 @@
 // ============================================
-// AdminService.gs - 管理員功能
+// AdminService.gs - 管理員功能（含快取優化）
 // ============================================
 
 /**
  * 取得統計資料
  */
 function getStatistics() {
-  var sheet = getWorksSheet();
-  if (!sheet) return { totalWorks: 0, yearStats: [], typeStats: {} };
+  var cached = getCachedWorks();
+  if (!cached.works.length) return { totalWorks: 0, yearStats: [], typeStats: {} };
 
-  var data = sheet.getDataRange().getValues();
   var yearMap = {};
   var typeStats = { pdf: 0, video: 0 };
   var studentSet = {};
 
-  for (var i = 1; i < data.length; i++) {
-    var studentId = data[i][1].toString();
-    var fileType = data[i][6];
+  for (var i = 0; i < cached.works.length; i++) {
+    var work = cached.works[i];
+    var studentId = work.studentId.toString();
+    var fileType = work.fileType;
     var enrollYear = getEnrollmentYear(studentId);
 
-    // 年份統計
-    if (enrollYear > 0) {
-      if (!yearMap[enrollYear]) {
-        yearMap[enrollYear] = { year: enrollYear, workCount: 0, studentCount: 0, students: {} };
-      }
-      yearMap[enrollYear].workCount++;
-      yearMap[enrollYear].students[studentId] = true;
+    // 年份統計（無法判斷年份的歸入 0）
+    var yearKey = enrollYear > 0 ? enrollYear : 0;
+    if (!yearMap[yearKey]) {
+      yearMap[yearKey] = { year: yearKey, workCount: 0, studentCount: 0, students: {} };
     }
+    yearMap[yearKey].workCount++;
+    yearMap[yearKey].students[studentId] = true;
 
     // 類型統計
     if (fileType === 'pdf') typeStats.pdf++;
     else if (fileType === 'video') typeStats.video++;
 
-    // 學生數
     studentSet[studentId] = true;
   }
 
@@ -41,16 +39,21 @@ function getStatistics() {
   for (var year in yearMap) {
     var stat = yearMap[year];
     stat.studentCount = Object.keys(stat.students).length;
-    stat.isGraduated = isGraduated(year + '000'); // 簡易判斷
+    stat.isGraduated = (stat.year > 0) ? isGraduated(stat.year + '000') : false;
+    stat.label = (stat.year > 0) ? '民國 ' + stat.year + ' 年入學' : '其他（無法辨識入學年份）';
     delete stat.students;
     yearStats.push(stat);
   }
 
-  // 依年份排序（新到舊）
-  yearStats.sort(function (a, b) { return b.year - a.year; });
+  // 依年份排序（新到舊，0 放最後）
+  yearStats.sort(function (a, b) {
+    if (a.year === 0) return 1;
+    if (b.year === 0) return -1;
+    return b.year - a.year;
+  });
 
   return {
-    totalWorks: data.length - 1,
+    totalWorks: cached.works.length,
     totalStudents: Object.keys(studentSet).length,
     yearStats: yearStats,
     typeStats: typeStats
@@ -58,22 +61,21 @@ function getStatistics() {
 }
 
 /**
- * 依入學年份取得作品
+ * 依入學年份取得作品（year=0 代表無法辨識年份的）
  */
 function getWorksByGraduationYear(year) {
-  var sheet = getWorksSheet();
-  if (!sheet) return [];
-
-  var data = sheet.getDataRange().getValues();
-  var headers = data[0];
+  var cached = getCachedWorks();
   var works = [];
 
-  for (var i = 1; i < data.length; i++) {
-    var studentId = data[i][1].toString();
+  for (var i = 0; i < cached.works.length; i++) {
+    var work = cached.works[i];
+    var studentId = work.studentId.toString();
     var enrollYear = getEnrollmentYear(studentId);
 
-    if (enrollYear === year) {
-      works.push(rowToWork(headers, data[i]));
+    if (year === 0 && enrollYear === 0) {
+      works.push(work);
+    } else if (enrollYear === year) {
+      works.push(work);
     }
   }
 
@@ -88,13 +90,10 @@ function batchDeleteWorks(workIds) {
   var data = sheet.getDataRange().getValues();
   var deletedCount = 0;
   var errors = [];
-
-  // 從後往前刪除（避免行號偏移）
   var rowsToDelete = [];
 
   for (var i = 1; i < data.length; i++) {
     if (workIds.indexOf(data[i][0]) !== -1) {
-      // 刪除 Drive 檔案
       var driveFileId = data[i][7];
       var thumbnailId = data[i][8];
 
@@ -112,13 +111,12 @@ function batchDeleteWorks(workIds) {
     }
   }
 
-  // 從後往前刪除行（避免行號偏移）
   rowsToDelete.sort(function (a, b) { return b - a; });
   for (var j = 0; j < rowsToDelete.length; j++) {
     sheet.deleteRow(rowsToDelete[j]);
   }
 
-  // 記錄操作日誌
+  clearWorksCache();
   logAdminAction('批次刪除', '刪除了 ' + deletedCount + ' 筆作品');
 
   return {

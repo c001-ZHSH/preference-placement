@@ -53,100 +53,6 @@
     .pdf-controls button:disabled { opacity: 0.3; cursor: not-allowed; }
     .pdf-controls span { color: white; font-size: 0.875rem; }
 
-    /* 影片播放器 */
-    .video-player {
-      background: #000;
-      border-radius: 12px;
-      overflow: hidden;
-      position: relative;
-    }
-
-    .video-player video {
-      width: 100%;
-      display: block;
-    }
-
-    .video-controls {
-      background: linear-gradient(transparent, rgba(0,0,0,0.8));
-      padding: 16px 20px 12px;
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      opacity: 0;
-      transition: opacity 0.3s;
-    }
-
-    .video-player:hover .video-controls {
-      opacity: 1;
-    }
-
-    .video-progress {
-      width: 100%;
-      height: 5px;
-      background: rgba(255,255,255,0.2);
-      border-radius: 3px;
-      cursor: pointer;
-      position: relative;
-    }
-
-    .video-progress-fill {
-      height: 100%;
-      background: #667eea;
-      border-radius: 3px;
-      transition: width 0.1s;
-    }
-
-    .video-btn-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .video-btn-row button {
-      background: none;
-      border: none;
-      color: white;
-      cursor: pointer;
-      font-size: 1rem;
-      padding: 4px 8px;
-      border-radius: 4px;
-      transition: background 0.2s;
-    }
-
-    .video-btn-row button:hover { background: rgba(255,255,255,0.15); }
-    .video-btn-row span { color: white; font-size: 0.8rem; }
-
-    .speed-menu {
-      position: absolute;
-      bottom: 60px;
-      right: 20px;
-      background: rgba(0,0,0,0.9);
-      border-radius: 8px;
-      overflow: hidden;
-      display: none;
-    }
-
-    .speed-menu.active { display: block; }
-
-    .speed-menu button {
-      display: block;
-      width: 100%;
-      padding: 8px 20px;
-      color: white;
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-size: 0.85rem;
-      text-align: left;
-    }
-
-    .speed-menu button:hover { background: rgba(255,255,255,0.15); }
-    .speed-menu button.active { color: #667eea; font-weight: bold; }
-
     /* 作品資訊側邊 */
     .work-info-panel {
       background: white;
@@ -235,42 +141,13 @@
             </div>
           </div>
 
-          <!-- 影片播放器 -->
-          <div id="video-player" class="video-player" style="display:none;">
-            <video id="video-element" onclick="toggleVideoPlay()"></video>
-            <div class="video-controls">
-              <div class="video-progress" id="video-progress" onclick="seekVideo(event)">
-                <div class="video-progress-fill" id="video-progress-fill"></div>
-              </div>
-              <div class="video-btn-row">
-                <div class="flex items-center gap-2">
-                  <button onclick="toggleVideoPlay()" id="video-play-btn">
-                    <i class="fas fa-play"></i>
-                  </button>
-                  <button onclick="toggleMute()" id="video-mute-btn">
-                    <i class="fas fa-volume-up"></i>
-                  </button>
-                  <input type="range" min="0" max="1" step="0.1" value="1"
-                         onchange="setVolume(this.value)" style="width:60px; accent-color:#667eea;">
-                  <span id="video-time">0:00 / 0:00</span>
-                </div>
-                <div class="flex items-center gap-2">
-                  <button onclick="toggleSpeedMenu()" id="speed-btn">
-                    <i class="fas fa-tachometer-alt"></i> <span id="speed-label">1x</span>
-                  </button>
-                  <button onclick="videoFullscreen()">
-                    <i class="fas fa-expand"></i>
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div class="speed-menu" id="speed-menu">
-              <button onclick="setSpeed(0.5)">0.5x</button>
-              <button onclick="setSpeed(0.75)">0.75x</button>
-              <button class="active" onclick="setSpeed(1)">1x</button>
-              <button onclick="setSpeed(1.25)">1.25x</button>
-              <button onclick="setSpeed(1.5)">1.5x</button>
-              <button onclick="setSpeed(2)">2x</button>
+          <!-- 影片播放器（使用 Google Drive 嵌入式播放器） -->
+          <div id="video-player" style="display:none;">
+            <div style="background:#000; border-radius:12px; overflow:hidden; position:relative; width:100%; padding-bottom:56.25%;">
+              <iframe id="video-iframe"
+                      style="position:absolute; top:0; left:0; width:100%; height:100%; border:none;"
+                      allowfullscreen>
+              </iframe>
             </div>
           </div>
         </div>
@@ -487,98 +364,12 @@
     });
 
     // ============================
-    // 影片播放器
+    // 影片播放器（Google Drive 嵌入式）
     // ============================
     function loadVideoPlayer(fileId) {
       document.getElementById('video-player').style.display = '';
-      var video = document.getElementById('video-element');
-
-      // 使用 Google Drive 的串流預覽連結
-      video.src = 'https://drive.google.com/uc?export=download&id=' + fileId;
-      video.load();
-
-      video.addEventListener('timeupdate', updateVideoProgress);
-      video.addEventListener('loadedmetadata', function() {
-        updateVideoTime();
-      });
-      video.addEventListener('ended', function() {
-        document.getElementById('video-play-btn').innerHTML = '<i class="fas fa-redo"></i>';
-      });
-    }
-
-    function toggleVideoPlay() {
-      var video = document.getElementById('video-element');
-      if (video.paused) {
-        video.play();
-        document.getElementById('video-play-btn').innerHTML = '<i class="fas fa-pause"></i>';
-      } else {
-        video.pause();
-        document.getElementById('video-play-btn').innerHTML = '<i class="fas fa-play"></i>';
-      }
-    }
-
-    function updateVideoProgress() {
-      var video = document.getElementById('video-element');
-      if (video.duration) {
-        var percent = (video.currentTime / video.duration) * 100;
-        document.getElementById('video-progress-fill').style.width = percent + '%';
-        updateVideoTime();
-      }
-    }
-
-    function updateVideoTime() {
-      var video = document.getElementById('video-element');
-      var current = formatTime(video.currentTime);
-      var total = formatTime(video.duration || 0);
-      document.getElementById('video-time').textContent = current + ' / ' + total;
-    }
-
-    function seekVideo(e) {
-      var video = document.getElementById('video-element');
-      var bar = document.getElementById('video-progress');
-      var rect = bar.getBoundingClientRect();
-      var percent = (e.clientX - rect.left) / rect.width;
-      video.currentTime = percent * video.duration;
-    }
-
-    function toggleMute() {
-      var video = document.getElementById('video-element');
-      video.muted = !video.muted;
-      document.getElementById('video-mute-btn').innerHTML = video.muted
-        ? '<i class="fas fa-volume-mute"></i>'
-        : '<i class="fas fa-volume-up"></i>';
-    }
-
-    function setVolume(val) {
-      document.getElementById('video-element').volume = val;
-    }
-
-    function toggleSpeedMenu() {
-      document.getElementById('speed-menu').classList.toggle('active');
-    }
-
-    function setSpeed(speed) {
-      document.getElementById('video-element').playbackRate = speed;
-      document.getElementById('speed-label').textContent = speed + 'x';
-      document.getElementById('speed-menu').classList.remove('active');
-
-      // 更新 active 狀態
-      document.querySelectorAll('#speed-menu button').forEach(function(btn) {
-        btn.classList.toggle('active', parseFloat(btn.textContent) === speed);
-      });
-    }
-
-    function videoFullscreen() {
-      var el = document.getElementById('video-player');
-      if (el.requestFullscreen) el.requestFullscreen();
-      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-    }
-
-    function formatTime(sec) {
-      if (isNaN(sec)) return '0:00';
-      var m = Math.floor(sec / 60);
-      var s = Math.floor(sec % 60);
-      return m + ':' + (s < 10 ? '0' : '') + s;
+      var iframe = document.getElementById('video-iframe');
+      iframe.src = 'https://drive.google.com/file/d/' + fileId + '/preview';
     }
   </script>
 </body>

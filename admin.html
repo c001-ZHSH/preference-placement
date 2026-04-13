@@ -204,8 +204,8 @@
         stats.yearStats.forEach(function(stat) {
           var opt = document.createElement('option');
           opt.value = stat.year;
-          opt.textContent = '民國 ' + stat.year + ' 年入學' +
-            (stat.isGraduated ? ' (已畢業)' : ' (在學中)') +
+          opt.textContent = stat.label +
+            (stat.year > 0 ? (stat.isGraduated ? ' (已畢業)' : ' (在學中)') : '') +
             ' - ' + stat.workCount + ' 件作品';
           select.appendChild(opt);
         });
@@ -222,15 +222,20 @@
       container.innerHTML = '';
       yearStats.forEach(function(stat) {
         var statusClass = stat.isGraduated ? 'graduated' : 'current';
-        var statusText = stat.isGraduated
-          ? '<span class="text-red-500 text-sm font-medium"><i class="fas fa-graduation-cap mr-1"></i>已畢業</span>'
-          : '<span class="text-green-500 text-sm font-medium"><i class="fas fa-book-reader mr-1"></i>在學中</span>';
+        var statusText = '';
+        if (stat.year === 0) {
+          statusText = '<span class="text-gray-400 text-sm font-medium"><i class="fas fa-question-circle mr-1"></i>未分類</span>';
+        } else if (stat.isGraduated) {
+          statusText = '<span class="text-red-500 text-sm font-medium"><i class="fas fa-graduation-cap mr-1"></i>已畢業</span>';
+        } else {
+          statusText = '<span class="text-green-500 text-sm font-medium"><i class="fas fa-book-reader mr-1"></i>在學中</span>';
+        }
 
         container.innerHTML += '' +
           '<div class="year-row ' + statusClass + '">' +
             '<div class="flex items-center gap-4">' +
               '<div>' +
-                '<span class="font-bold text-gray-800">民國 ' + stat.year + ' 年入學</span>' +
+                '<span class="font-bold text-gray-800">' + escapeHtml(stat.label) + '</span>' +
                 '<div class="mt-1">' + statusText + '</div>' +
               '</div>' +
             '</div>' +
@@ -259,16 +264,18 @@
     }
 
     function loadYearWorks() {
-      var year = parseInt(document.getElementById('year-select').value);
+      var rawValue = document.getElementById('year-select').value;
       selectedIds = {};
       updateSelectedCount();
 
-      if (!year) {
+      if (rawValue === '') {
         document.getElementById('batch-table-container').style.display = 'none';
         document.getElementById('batch-empty').style.display = 'none';
         document.getElementById('batch-hint').style.display = '';
         return;
       }
+
+      var year = parseInt(rawValue);
 
       document.getElementById('batch-hint').style.display = 'none';
       showLoading('載入作品列表...');

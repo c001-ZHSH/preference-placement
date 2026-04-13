@@ -1,6 +1,9 @@
 // ============================================
-// DataService.gs - Google Sheets CRUD 操作
+// DataService.gs - Google Sheets CRUD 操作（含快取優化）
 // ============================================
+
+var WORKS_CACHE_TTL = 120;  // 作品列表快取 2 分鐘
+var LIKES_CACHE_TTL = 120;  // 按讚資料快取 2 分鐘
 
 /**
  * 取得 Spreadsheet 物件
@@ -27,6 +30,84 @@ function generateId() {
   return Utilities.getUuid();
 }
 
+// ============================================
+// 快取層
+// ============================================
+
+/**
+ * 取得所有作品資料（含快取）
+ */
+function getCachedWorks() {
+  var cache = CacheService.getScriptCache();
+  var cached = cache.get('all_works');
+  if (cached) return JSON.parse(cached);
+
+  var sheet = getWorksSheet();
+  if (!sheet) return { headers: [], rows: [] };
+
+  var data = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var works = [];
+
+  for (var i = 1; i < data.length; i++) {
+    works.push(rowToWork(headers, data[i]));
+  }
+
+  var result = { headers: headers, works: works };
+
+  // CacheService 單一值上限 100KB，分段儲存如果太大
+  var json = JSON.stringify(result);
+  if (json.length < 90000) {
+    cache.put('all_works', json, WORKS_CACHE_TTL);
+  }
+
+  return result;
+}
+
+/**
+ * 取得所有按讚資料（含快取）
+ */
+function getCachedLikes() {
+  var cache = CacheService.getScriptCache();
+  var cached = cache.get('all_likes');
+  if (cached) return JSON.parse(cached);
+
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName('likes');
+  if (!sheet) return [];
+
+  var data = sheet.getDataRange().getValues();
+  var likes = [];
+  for (var i = 1; i < data.length; i++) {
+    likes.push({ workId: data[i][0], userEmail: data[i][1] });
+  }
+
+  var json = JSON.stringify(likes);
+  if (json.length < 90000) {
+    cache.put('all_likes', json, LIKES_CACHE_TTL);
+  }
+
+  return likes;
+}
+
+/**
+ * 清除作品快取（新增/修改/刪除作品後呼叫）
+ */
+function clearWorksCache() {
+  CacheService.getScriptCache().remove('all_works');
+}
+
+/**
+ * 清除按讚快取
+ */
+function clearLikesCache() {
+  CacheService.getScriptCache().remove('all_likes');
+}
+
+// ============================================
+// 作品 CRUD
+// ============================================
+
 /**
  * 取得所有作品（支援分頁、搜尋、篩選）
  */
@@ -36,24 +117,17 @@ function getAllWorks(page, pageSize, search, fileType) {
   search = search ? search.toLowerCase() : '';
   fileType = fileType || '';
 
-  var sheet = getWorksSheet();
-  if (!sheet) return { works: [], total: 0, page: page, pageSize: pageSize };
-
-  var data = sheet.getDataRange().getValues();
-  var headers = data[0];
+  var cached = getCachedWorks();
   var works = [];
 
-  for (var i = data.length - 1; i >= 1; i--) {
-    var row = data[i];
-    var work = rowToWork(headers, row);
+  for (var i = cached.works.length - 1; i >= 0; i--) {
+    var work = cached.works[i];
 
-    // 搜尋篩選
     if (search) {
       var matchText = (work.title + work.studentId + work.studentName + work.description).toLowerCase();
       if (matchText.indexOf(search) === -1) continue;
     }
 
-    // 檔案類型篩選
     if (fileType && work.fileType !== fileType) continue;
 
     works.push(work);
@@ -76,16 +150,9 @@ function getAllWorks(page, pageSize, search, fileType) {
  * 依 ID 取得單一作品
  */
 function getWorkById(id) {
-  var sheet = getWorksSheet();
-  if (!sheet) return null;
-
-  var data = sheet.getDataRange().getValues();
-  var headers = data[0];
-
-  for (var i = 1; i < data.length; i++) {
-    if (data[i][0] === id) {
-      return rowToWork(headers, data[i]);
-    }
+  var cached = getCachedWorks();
+  for (var i = 0; i < cached.works.length; i++) {
+    if (cached.works[i].id === id) return cached.works[i];
   }
   return null;
 }
@@ -94,16 +161,11 @@ function getWorkById(id) {
  * 依學號取得作品
  */
 function getWorksByStudent(studentId) {
-  var sheet = getWorksSheet();
-  if (!sheet) return [];
-
-  var data = sheet.getDataRange().getValues();
-  var headers = data[0];
+  var cached = getCachedWorks();
   var works = [];
-
-  for (var i = data.length - 1; i >= 1; i--) {
-    if (data[i][1] === studentId) {
-      works.push(rowToWork(headers, data[i]));
+  for (var i = cached.works.length - 1; i >= 0; i--) {
+    if (cached.works[i].studentId === studentId) {
+      works.push(cached.works[i]);
     }
   }
   return works;
@@ -134,6 +196,7 @@ function createWork(params) {
   ];
 
   sheet.appendRow(row);
+  clearWorksCache();
   return { id: id };
 }
 
@@ -149,7 +212,17 @@ function updateWork(id, params) {
       var rowNum = i + 1;
       if (params.title !== undefined) sheet.getRange(rowNum, 5).setValue(params.title);
       if (params.description !== undefined) sheet.getRange(rowNum, 6).setValue(params.description);
-      sheet.getRange(rowNum, 11).setValue(new Date().toISOString()); // updatedAt
+      if (params.fileType !== undefined) sheet.getRange(rowNum, 7).setValue(params.fileType);
+      if (params.driveFileId !== undefined) {
+        // 刪除舊檔案
+        var oldFileId = data[i][7];
+        if (oldFileId && oldFileId !== params.driveFileId) {
+          try { deleteFile(oldFileId); } catch (e) { /* ignore */ }
+        }
+        sheet.getRange(rowNum, 8).setValue(params.driveFileId);
+      }
+      sheet.getRange(rowNum, 11).setValue(new Date().toISOString());
+      clearWorksCache();
       return true;
     }
   }
@@ -166,6 +239,7 @@ function deleteWork(id) {
   for (var i = 1; i < data.length; i++) {
     if (data[i][0] === id) {
       sheet.deleteRow(i + 1);
+      clearWorksCache();
       return true;
     }
   }
@@ -184,7 +258,7 @@ function rowToWork(headers, row) {
 }
 
 // ============================================
-// 按讚功能
+// 按讚功能（含快取）
 // ============================================
 
 /**
@@ -208,17 +282,16 @@ function toggleLike(workId, userEmail) {
   var sheet = getLikesSheet();
   var data = sheet.getDataRange().getValues();
 
-  // 檢查是否已按讚
   for (var i = 1; i < data.length; i++) {
     if (data[i][0] === workId && data[i][1] === userEmail) {
-      // 已按讚 → 取消讚
       sheet.deleteRow(i + 1);
+      clearLikesCache();
       return { liked: false, likeCount: getLikeCount(workId) };
     }
   }
 
-  // 未按讚 → 新增讚
   sheet.appendRow([workId, userEmail, new Date().toISOString()]);
+  clearLikesCache();
   return { liked: true, likeCount: getLikeCount(workId) };
 }
 
@@ -226,11 +299,10 @@ function toggleLike(workId, userEmail) {
  * 取得某作品的按讚數
  */
 function getLikeCount(workId) {
-  var sheet = getLikesSheet();
-  var data = sheet.getDataRange().getValues();
+  var likes = getCachedLikes();
   var count = 0;
-  for (var i = 1; i < data.length; i++) {
-    if (data[i][0] === workId) count++;
+  for (var i = 0; i < likes.length; i++) {
+    if (likes[i].workId === workId) count++;
   }
   return count;
 }
@@ -239,34 +311,31 @@ function getLikeCount(workId) {
  * 取得某使用者是否已按讚某作品
  */
 function hasLiked(workId, userEmail) {
-  var sheet = getLikesSheet();
-  var data = sheet.getDataRange().getValues();
-  for (var i = 1; i < data.length; i++) {
-    if (data[i][0] === workId && data[i][1] === userEmail) return true;
+  var likes = getCachedLikes();
+  for (var i = 0; i < likes.length; i++) {
+    if (likes[i].workId === workId && likes[i].userEmail === userEmail) return true;
   }
   return false;
 }
 
 /**
- * 批次取得多個作品的按讚資訊（優化效能）
+ * 批次取得多個作品的按讚資訊
  */
 function getBatchLikeInfo(workIds, userEmail) {
-  var sheet = getLikesSheet();
-  var data = sheet.getDataRange().getValues();
+  var likes = getCachedLikes();
   var counts = {};
   var userLikes = {};
 
-  // 初始化
   for (var k = 0; k < workIds.length; k++) {
     counts[workIds[k]] = 0;
     userLikes[workIds[k]] = false;
   }
 
-  for (var i = 1; i < data.length; i++) {
-    var wid = data[i][0];
+  for (var i = 0; i < likes.length; i++) {
+    var wid = likes[i].workId;
     if (counts.hasOwnProperty(wid)) {
       counts[wid]++;
-      if (data[i][1] === userEmail) {
+      if (likes[i].userEmail === userEmail) {
         userLikes[wid] = true;
       }
     }
@@ -285,16 +354,11 @@ function getAllWorksWithLikes(page, pageSize, search, fileType, sortBy, userEmai
   fileType = fileType || '';
   sortBy = sortBy || 'newest';
 
-  var sheet = getWorksSheet();
-  if (!sheet) return { works: [], total: 0, page: page, pageSize: pageSize };
-
-  var data = sheet.getDataRange().getValues();
-  var headers = data[0];
+  var cached = getCachedWorks();
   var works = [];
 
-  for (var i = 1; i < data.length; i++) {
-    var row = data[i];
-    var work = rowToWork(headers, row);
+  for (var i = 0; i < cached.works.length; i++) {
+    var work = cached.works[i];
 
     if (search) {
       var matchText = (work.title + work.studentId + work.studentName + work.description).toLowerCase();
@@ -310,7 +374,6 @@ function getAllWorksWithLikes(page, pageSize, search, fileType, sortBy, userEmai
   var workIds = works.map(function(w) { return w.id; });
   var likeInfo = getBatchLikeInfo(workIds, userEmail);
 
-  // 將按讚資訊附加到作品
   for (var j = 0; j < works.length; j++) {
     works[j].likeCount = likeInfo.counts[works[j].id] || 0;
     works[j].liked = likeInfo.userLikes[works[j].id] || false;
@@ -320,7 +383,6 @@ function getAllWorksWithLikes(page, pageSize, search, fileType, sortBy, userEmai
   if (sortBy === 'likes') {
     works.sort(function(a, b) { return b.likeCount - a.likeCount; });
   } else {
-    // newest (預設) - 依上傳時間新到舊
     works.sort(function(a, b) {
       return new Date(b.createdAt) - new Date(a.createdAt);
     });
