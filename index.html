@@ -16,7 +16,7 @@
     </div>
 
     <!-- 搜尋與篩選列 -->
-    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-8">
+    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-4">
       <div class="search-bar flex-1">
         <i class="fas fa-search text-gray-400"></i>
         <input type="text" id="search-input" placeholder="搜尋作品標題、學號或姓名..."
@@ -33,6 +33,17 @@
           <i class="fas fa-video mr-1"></i> 影片
         </button>
       </div>
+    </div>
+
+    <!-- 排序列 -->
+    <div class="flex items-center gap-2 mb-8">
+      <span class="text-sm text-gray-500"><i class="fas fa-sort mr-1"></i>排序：</span>
+      <button class="btn-secondary sort-btn active" data-sort="newest" onclick="setSort('newest')" style="padding:6px 16px; font-size:0.85rem;">
+        <i class="fas fa-clock mr-1"></i> 最新上傳
+      </button>
+      <button class="btn-secondary sort-btn" data-sort="likes" onclick="setSort('likes')" style="padding:6px 16px; font-size:0.85rem;">
+        <i class="fas fa-heart mr-1"></i> 最多喜歡
+      </button>
     </div>
 
     <!-- 作品列表 -->
@@ -69,6 +80,7 @@
     var currentPage = 1;
     var currentSearch = '';
     var currentFilter = '';
+    var currentSort = 'newest';
     var searchTimer = null;
 
     function onUserLoaded(user) {
@@ -85,7 +97,8 @@
         page: currentPage,
         pageSize: 12,
         search: currentSearch,
-        fileType: currentFilter
+        fileType: currentFilter,
+        sortBy: currentSort
       }, function(result) {
         document.getElementById('loading-state').style.display = 'none';
 
@@ -187,8 +200,28 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
+    function setSort(sortBy) {
+      currentSort = sortBy;
+      currentPage = 1;
+
+      document.querySelectorAll('.sort-btn').forEach(function(btn) {
+        if (btn.getAttribute('data-sort') === sortBy) {
+          btn.style.background = '#2d5f8a';
+          btn.style.color = 'white';
+          btn.classList.add('active');
+        } else {
+          btn.style.background = '#e2e8f0';
+          btn.style.color = '#4a5568';
+          btn.classList.remove('active');
+        }
+      });
+
+      loadWorks();
+    }
+
     // 初始化篩選按鈕樣式
     setFilter('');
+    setSort('newest');
   </script>
 </body>
 </html>

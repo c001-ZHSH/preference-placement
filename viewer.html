@@ -154,6 +154,42 @@
       padding: 24px;
       box-shadow: 0 2px 12px rgba(0,0,0,0.08);
     }
+
+    .like-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 20px;
+      border: 2px solid #e2e8f0;
+      background: white;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: #a0aec0;
+      transition: all 0.2s;
+    }
+
+    .like-btn:hover {
+      border-color: #fc8181;
+      color: #e53e3e;
+    }
+
+    .like-btn.liked {
+      border-color: #e53e3e;
+      color: #e53e3e;
+      background: #fff5f5;
+    }
+
+    .like-btn.liked i {
+      animation: likePopIn 0.3s ease;
+    }
+
+    @keyframes likePopIn {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.3); }
+      100% { transform: scale(1); }
+    }
   </style>
 </head>
 <body>
@@ -242,7 +278,13 @@
         <!-- 右側：作品資訊 -->
         <div>
           <div class="work-info-panel">
-            <div class="mb-3" id="work-type-badge"></div>
+            <div class="flex items-center justify-between mb-3">
+              <div id="work-type-badge"></div>
+              <button class="like-btn" id="like-btn" onclick="toggleLike()" title="按讚">
+                <i class="far fa-heart" id="like-icon"></i>
+                <span id="like-count">0</span>
+              </button>
+            </div>
             <h1 class="text-xl font-bold text-gray-800 mb-3" id="work-title"></h1>
             <div class="flex items-center gap-3 mb-4 pb-4 border-b border-gray-100">
               <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
@@ -319,6 +361,9 @@
           document.getElementById('work-description').textContent = work.description;
         }
 
+        // 顯示按讚資訊
+        updateLikeUI(work.liked, work.likeCount);
+
         // 根據檔案類型載入
         if (work.fileType === 'pdf') {
           loadPdfViewer(work.driveFileId);
@@ -333,6 +378,31 @@
     function showNotFound() {
       document.getElementById('viewer-loading').style.display = 'none';
       document.getElementById('viewer-notfound').style.display = '';
+    }
+
+    // ============================
+    // 按讚功能
+    // ============================
+    function toggleLike() {
+      callApi('toggleLike', { workId: workId }, function(result) {
+        updateLikeUI(result.liked, result.likeCount);
+      });
+    }
+
+    function updateLikeUI(liked, count) {
+      var btn = document.getElementById('like-btn');
+      var icon = document.getElementById('like-icon');
+      var countEl = document.getElementById('like-count');
+
+      countEl.textContent = count || 0;
+
+      if (liked) {
+        btn.classList.add('liked');
+        icon.className = 'fas fa-heart';
+      } else {
+        btn.classList.remove('liked');
+        icon.className = 'far fa-heart';
+      }
     }
 
     // ============================

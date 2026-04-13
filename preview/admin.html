@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>管理員後台 - 自主學習成果展示平台</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    * { font-family: 'Noto Sans TC', sans-serif; }
+    body { background-color: #f0f4f8; min-height: 100vh; }
+    .navbar { background: linear-gradient(135deg, #1e3a5f 0%, #2d5f8a 100%); box-shadow: 0 2px 10px rgba(0,0,0,0.15); }
+    .navbar a { transition: all 0.2s ease; text-decoration: none; }
+    .navbar a:hover { background-color: rgba(255,255,255,0.15); border-radius: 8px; }
+    .navbar a.active { background-color: rgba(255,255,255,0.2); border-radius: 8px; font-weight: 500; }
+    .btn-primary { background: linear-gradient(135deg, #1e3a5f 0%, #2d5f8a 100%); color: white; padding: 10px 24px; border-radius: 10px; border: none; cursor: pointer; font-weight: 500; display: inline-flex; align-items: center; gap: 8px; }
+    .btn-secondary { background: #e2e8f0; color: #4a5568; padding: 10px 24px; border-radius: 10px; border: none; cursor: pointer; font-weight: 500; }
+    .btn-danger { background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%); color: white; padding: 10px 24px; border-radius: 10px; border: none; cursor: pointer; font-weight: 500; }
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 500; }
+    .badge-pdf { background: #fed7d7; color: #c53030; }
+    .badge-video { background: #e9d8fd; color: #6b46c1; }
+    .form-input { padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 1rem; outline: none; }
+    .form-input:focus { border-color: #2d5f8a; }
+
+    .stat-card { background: white; border-radius: 16px; padding: 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); text-align: center; }
+    .stat-card .stat-number { font-size: 2rem; font-weight: 700; background: linear-gradient(135deg, #1e3a5f, #667eea); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+    .year-row { background: white; border-radius: 12px; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 6px rgba(0,0,0,0.06); transition: all 0.2s; }
+    .year-row:hover { box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+    .year-row.graduated { border-left: 4px solid #e53e3e; }
+    .year-row.current { border-left: 4px solid #38a169; }
+
+    .batch-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+    .batch-table th { background: #f7fafc; padding: 12px 16px; text-align: left; font-weight: 600; font-size: 0.85rem; color: #4a5568; border-bottom: 2px solid #e2e8f0; }
+    .batch-table td { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; font-size: 0.9rem; }
+    .batch-table tr:hover td { background: #f7fafc; }
+    .batch-table input[type="checkbox"] { width: 18px; height: 18px; accent-color: #2d5f8a; }
+  </style>
+</head>
+<body>
+  <nav class="navbar px-4 py-3">
+    <div class="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-3">
+      <a href="index.html" class="flex items-center gap-2 text-white text-lg font-bold" style="text-decoration:none;">
+        <i class="fas fa-graduation-cap text-2xl"></i><span>自主學習成果展示平台</span>
+      </a>
+      <div class="flex items-center gap-2 flex-wrap">
+        <a href="index.html" class="text-white text-sm px-3 py-2" style="text-decoration:none;"><i class="fas fa-home mr-1"></i> 首頁</a>
+        <a href="upload.html" class="text-white text-sm px-3 py-2" style="text-decoration:none;"><i class="fas fa-cloud-upload-alt mr-1"></i> 上傳作品</a>
+        <a href="my-works.html" class="text-white text-sm px-3 py-2" style="text-decoration:none;"><i class="fas fa-folder-open mr-1"></i> 我的作品</a>
+        <a href="admin.html" class="text-white text-sm px-3 py-2 active" style="text-decoration:none;"><i class="fas fa-cog mr-1"></i> 管理後台</a>
+      </div>
+      <div class="flex items-center gap-2 text-white text-sm"><i class="fas fa-user-circle text-xl"></i><span>admin01</span></div>
+    </div>
+  </nav>
+
+  <div class="max-w-6xl mx-auto px-4 py-8">
+    <div class="mb-8">
+      <h1 class="text-2xl font-bold text-gray-800 mb-1"><i class="fas fa-cog mr-2 text-blue-500"></i>管理員後台</h1>
+      <p class="text-gray-500">管理平台作品、查看統計資料、批次刪除畢業生檔案</p>
+    </div>
+
+    <!-- 統計卡片 -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div class="stat-card">
+        <div class="stat-number">156</div>
+        <p class="text-sm text-gray-500 mt-1">作品總數</p>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">87</div>
+        <p class="text-sm text-gray-500 mt-1">學生人數</p>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">98</div>
+        <p class="text-sm text-gray-500 mt-1">PDF 文件</p>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">58</div>
+        <p class="text-sm text-gray-500 mt-1">影片檔案</p>
+      </div>
+    </div>
+
+    <!-- 各年份統計 -->
+    <div class="mb-8">
+      <h2 class="text-lg font-bold text-gray-800 mb-4"><i class="fas fa-chart-bar mr-1 text-gray-400"></i> 各入學年份統計</h2>
+      <div class="flex flex-col gap-3">
+        <div class="year-row current">
+          <div>
+            <span class="font-bold text-gray-800">民國 113 年入學</span>
+            <div class="mt-1"><span class="text-green-500 text-sm font-medium"><i class="fas fa-book-reader mr-1"></i>在學中</span></div>
+          </div>
+          <div class="flex items-center gap-6 text-sm">
+            <div class="text-center"><div class="font-bold text-gray-800 text-lg">32</div><div class="text-gray-400">位學生</div></div>
+            <div class="text-center"><div class="font-bold text-gray-800 text-lg">58</div><div class="text-gray-400">件作品</div></div>
+            <button class="btn-secondary text-xs" onclick="showBatch(113)"><i class="fas fa-eye mr-1"></i> 查看</button>
+          </div>
+        </div>
+        <div class="year-row current">
+          <div>
+            <span class="font-bold text-gray-800">民國 112 年入學</span>
+            <div class="mt-1"><span class="text-green-500 text-sm font-medium"><i class="fas fa-book-reader mr-1"></i>在學中</span></div>
+          </div>
+          <div class="flex items-center gap-6 text-sm">
+            <div class="text-center"><div class="font-bold text-gray-800 text-lg">28</div><div class="text-gray-400">位學生</div></div>
+            <div class="text-center"><div class="font-bold text-gray-800 text-lg">45</div><div class="text-gray-400">件作品</div></div>
+            <button class="btn-secondary text-xs"><i class="fas fa-eye mr-1"></i> 查看</button>
+          </div>
+        </div>
+        <div class="year-row graduated">
+          <div>
+            <span class="font-bold text-gray-800">民國 111 年入學</span>
+            <div class="mt-1"><span class="text-red-500 text-sm font-medium"><i class="fas fa-graduation-cap mr-1"></i>已畢業</span></div>
+          </div>
+          <div class="flex items-center gap-6 text-sm">
+            <div class="text-center"><div class="font-bold text-gray-800 text-lg">18</div><div class="text-gray-400">位學生</div></div>
+            <div class="text-center"><div class="font-bold text-gray-800 text-lg">35</div><div class="text-gray-400">件作品</div></div>
+            <button class="btn-secondary text-xs" onclick="showBatch(111)"><i class="fas fa-eye mr-1"></i> 查看</button>
+          </div>
+        </div>
+        <div class="year-row graduated">
+          <div>
+            <span class="font-bold text-gray-800">民國 110 年入學</span>
+            <div class="mt-1"><span class="text-red-500 text-sm font-medium"><i class="fas fa-graduation-cap mr-1"></i>已畢業</span></div>
+          </div>
+          <div class="flex items-center gap-6 text-sm">
+            <div class="text-center"><div class="font-bold text-gray-800 text-lg">9</div><div class="text-gray-400">位學生</div></div>
+            <div class="text-center"><div class="font-bold text-gray-800 text-lg">18</div><div class="text-gray-400">件作品</div></div>
+            <button class="btn-secondary text-xs"><i class="fas fa-eye mr-1"></i> 查看</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 批次刪除區 -->
+    <div style="background:white; border-radius:16px; padding:24px; box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+      <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+        <h2 class="text-lg font-bold text-gray-800"><i class="fas fa-trash-alt mr-1 text-red-400"></i> 批次管理</h2>
+        <div class="flex items-center gap-3">
+          <select class="form-input" id="year-select" onchange="showBatchTable()">
+            <option value="">-- 選擇入學年份 --</option>
+            <option value="111">民國 111 年入學 (已畢業) - 35 件作品</option>
+            <option value="110">民國 110 年入學 (已畢業) - 18 件作品</option>
+          </select>
+          <button class="btn-danger" id="batch-btn" style="display:none;" onclick="alert('確定要刪除所選的作品嗎？（預覽模式）')">
+            <i class="fas fa-trash mr-1"></i> 刪除所選 (<span id="sel-count">0</span>)
+          </button>
+        </div>
+      </div>
+
+      <div id="batch-hint" class="text-center py-8 text-gray-400">
+        <i class="fas fa-hand-pointer text-3xl mb-2" style="display:block;"></i>
+        <p>請先選擇入學年份來查看作品</p>
+      </div>
+
+      <div id="batch-table" style="display:none; overflow-x:auto;">
+        <div class="mb-3 flex items-center gap-3">
+          <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-600">
+            <input type="checkbox" id="select-all" onchange="toggleAll(this.checked)"> 全選
+          </label>
+        </div>
+        <table class="batch-table">
+          <thead>
+            <tr><th style="width:40px;"></th><th>學號</th><th>姓名</th><th>標題</th><th>類型</th><th>上傳日期</th></tr>
+          </thead>
+          <tbody id="batch-body">
+            <tr><td><input type="checkbox" class="row-cb" onchange="updateCount()"></td><td>111001</td><td>趙一鳴</td><td style="color:#2d5f8a;">3D 列印入門與實作</td><td><span class="badge badge-pdf"><i class="fas fa-file-pdf mr-1"></i>PDF</span></td><td class="text-gray-500 text-sm">112/05/10</td></tr>
+            <tr><td><input type="checkbox" class="row-cb" onchange="updateCount()"></td><td>111002</td><td>錢小雲</td><td style="color:#2d5f8a;">韓語基礎會話學習紀錄</td><td><span class="badge badge-video"><i class="fas fa-video mr-1"></i>影片</span></td><td class="text-gray-500 text-sm">112/04/22</td></tr>
+            <tr><td><input type="checkbox" class="row-cb" onchange="updateCount()"></td><td>111003</td><td>孫大維</td><td style="color:#2d5f8a;">植物水耕栽培實驗</td><td><span class="badge badge-pdf"><i class="fas fa-file-pdf mr-1"></i>PDF</span></td><td class="text-gray-500 text-sm">112/04/15</td></tr>
+            <tr><td><input type="checkbox" class="row-cb" onchange="updateCount()"></td><td>111004</td><td>周美琪</td><td style="color:#2d5f8a;">微電影製作：我的家鄉</td><td><span class="badge badge-video"><i class="fas fa-video mr-1"></i>影片</span></td><td class="text-gray-500 text-sm">112/03/28</td></tr>
+            <tr><td><input type="checkbox" class="row-cb" onchange="updateCount()"></td><td>111005</td><td>鄭志偉</td><td style="color:#2d5f8a;">Arduino 智慧盆栽系統</td><td><span class="badge badge-pdf"><i class="fas fa-file-pdf mr-1"></i>PDF</span></td><td class="text-gray-500 text-sm">112/03/15</td></tr>
+            <tr><td><input type="checkbox" class="row-cb" onchange="updateCount()"></td><td>111006</td><td>王怡君</td><td style="color:#2d5f8a;">英語演講練習歷程</td><td><span class="badge badge-video"><i class="fas fa-video mr-1"></i>影片</span></td><td class="text-gray-500 text-sm">112/03/01</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <footer class="text-center py-6 mt-12 text-gray-400 text-sm"><p>竹山高中 自主學習成果展示平台</p></footer>
+
+  <script>
+    function showBatch(year) {
+      document.getElementById('year-select').value = year;
+      showBatchTable();
+    }
+
+    function showBatchTable() {
+      var val = document.getElementById('year-select').value;
+      document.getElementById('batch-hint').style.display = val ? 'none' : '';
+      document.getElementById('batch-table').style.display = val ? '' : 'none';
+      document.getElementById('batch-btn').style.display = 'none';
+      document.getElementById('select-all').checked = false;
+      document.querySelectorAll('.row-cb').forEach(function(cb) { cb.checked = false; });
+      updateCount();
+    }
+
+    function toggleAll(checked) {
+      document.querySelectorAll('.row-cb').forEach(function(cb) { cb.checked = checked; });
+      updateCount();
+    }
+
+    function updateCount() {
+      var count = document.querySelectorAll('.row-cb:checked').length;
+      document.getElementById('sel-count').textContent = count;
+      document.getElementById('batch-btn').style.display = count > 0 ? '' : 'none';
+    }
+  </script>
+</body>
+</html>

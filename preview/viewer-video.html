@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>影片播放 - 自主學習成果展示平台</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    * { font-family: 'Noto Sans TC', sans-serif; }
+    body { background-color: #f0f4f8; min-height: 100vh; }
+    .navbar { background: linear-gradient(135deg, #1e3a5f 0%, #2d5f8a 100%); box-shadow: 0 2px 10px rgba(0,0,0,0.15); }
+    .navbar a { transition: all 0.2s ease; text-decoration: none; }
+    .navbar a:hover { background-color: rgba(255,255,255,0.15); border-radius: 8px; }
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 500; }
+    .badge-video { background: #e9d8fd; color: #6b46c1; }
+
+    .video-player { background: #000; border-radius: 12px; overflow: hidden; position: relative; }
+    .video-placeholder {
+      width: 100%; height: 0; padding-bottom: 56.25%; position: relative;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    }
+    .video-placeholder-inner {
+      position: absolute; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; color: white;
+    }
+    .play-btn-large {
+      width: 80px; height: 80px; border-radius: 50%;
+      background: rgba(255,255,255,0.15); border: 3px solid rgba(255,255,255,0.4);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all 0.3s; margin-bottom: 16px;
+    }
+    .play-btn-large:hover { background: rgba(255,255,255,0.25); transform: scale(1.1); }
+
+    .video-controls {
+      background: linear-gradient(transparent, rgba(0,0,0,0.8));
+      padding: 16px 20px 12px; position: absolute; bottom: 0; left: 0; right: 0;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .video-progress { width: 100%; height: 5px; background: rgba(255,255,255,0.2); border-radius: 3px; cursor: pointer; position: relative; }
+    .video-progress-fill { height: 100%; width: 35%; background: #667eea; border-radius: 3px; }
+    .video-btn-row { display: flex; align-items: center; justify-content: space-between; }
+    .video-btn-row button { background: none; border: none; color: white; cursor: pointer; font-size: 1rem; padding: 4px 8px; border-radius: 4px; transition: background 0.2s; }
+    .video-btn-row button:hover { background: rgba(255,255,255,0.15); }
+    .video-btn-row span { color: white; font-size: 0.8rem; }
+
+    .speed-menu {
+      position: absolute; bottom: 60px; right: 20px; background: rgba(0,0,0,0.9);
+      border-radius: 8px; overflow: hidden; display: none;
+    }
+    .speed-menu.active { display: block; }
+    .speed-menu button { display: block; width: 100%; padding: 8px 20px; color: white; background: none; border: none; cursor: pointer; font-size: 0.85rem; text-align: left; }
+    .speed-menu button:hover { background: rgba(255,255,255,0.15); }
+    .speed-menu button.active { color: #667eea; font-weight: bold; }
+
+    .work-info-panel { background: white; border-radius: 16px; padding: 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+
+    .like-btn {
+      display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px;
+      border-radius: 20px; border: 2px solid #e2e8f0; background: white;
+      cursor: pointer; font-size: 0.9rem; font-weight: 500; color: #a0aec0; transition: all 0.2s;
+    }
+    .like-btn:hover { border-color: #fc8181; color: #e53e3e; }
+    .like-btn.liked { border-color: #e53e3e; color: #e53e3e; background: #fff5f5; }
+  </style>
+</head>
+<body>
+  <nav class="navbar px-4 py-3">
+    <div class="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-3">
+      <a href="index.html" class="flex items-center gap-2 text-white text-lg font-bold" style="text-decoration:none;">
+        <i class="fas fa-graduation-cap text-2xl"></i><span>自主學習成果展示平台</span>
+      </a>
+      <div class="flex items-center gap-2 flex-wrap">
+        <a href="index.html" class="text-white text-sm px-3 py-2" style="text-decoration:none;"><i class="fas fa-home mr-1"></i> 首頁</a>
+        <a href="upload.html" class="text-white text-sm px-3 py-2" style="text-decoration:none;"><i class="fas fa-cloud-upload-alt mr-1"></i> 上傳作品</a>
+        <a href="my-works.html" class="text-white text-sm px-3 py-2" style="text-decoration:none;"><i class="fas fa-folder-open mr-1"></i> 我的作品</a>
+        <a href="admin.html" class="text-white text-sm px-3 py-2" style="text-decoration:none;"><i class="fas fa-cog mr-1"></i> 管理後台</a>
+      </div>
+      <div class="flex items-center gap-2 text-white text-sm"><i class="fas fa-user-circle text-xl"></i><span>110001</span></div>
+    </div>
+  </nav>
+
+  <div class="max-w-7xl mx-auto px-4 py-8">
+    <div class="mb-4">
+      <a href="index.html" class="text-gray-500 hover:text-gray-700" style="text-decoration:none;">
+        <i class="fas fa-arrow-left mr-1"></i> 返回首頁
+      </a>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- 影片播放器 -->
+      <div class="lg:col-span-2">
+        <div class="video-player">
+          <div class="video-placeholder">
+            <div class="video-placeholder-inner">
+              <div class="play-btn-large" onclick="this.innerHTML='<i class=\'fas fa-pause text-3xl text-white\'></i>'">
+                <i class="fas fa-play text-3xl text-white" style="margin-left:4px;"></i>
+              </div>
+              <p class="text-lg font-medium">校園生態觀察紀錄</p>
+              <p class="text-sm text-gray-400 mt-1">12:34</p>
+            </div>
+          </div>
+          <div class="video-controls">
+            <div class="video-progress"><div class="video-progress-fill"></div></div>
+            <div class="video-btn-row">
+              <div class="flex items-center gap-2">
+                <button><i class="fas fa-play"></i></button>
+                <button><i class="fas fa-volume-up"></i></button>
+                <input type="range" min="0" max="1" step="0.1" value="0.8" style="width:60px; accent-color:#667eea;">
+                <span>4:23 / 12:34</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <button onclick="document.getElementById('speed-menu').classList.toggle('active')">
+                  <i class="fas fa-tachometer-alt"></i> <span>1x</span>
+                </button>
+                <button><i class="fas fa-expand"></i></button>
+              </div>
+            </div>
+          </div>
+          <div class="speed-menu" id="speed-menu">
+            <button>0.5x</button>
+            <button>0.75x</button>
+            <button class="active">1x</button>
+            <button>1.25x</button>
+            <button>1.5x</button>
+            <button>2x</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 作品資訊 -->
+      <div>
+        <div class="work-info-panel">
+          <div class="flex items-center justify-between mb-3">
+              <span class="badge badge-video"><i class="fas fa-video mr-1"></i>影片</span>
+              <button class="like-btn" onclick="this.classList.toggle('liked'); var s=this.querySelector('span'); var n=parseInt(s.textContent); s.textContent=this.classList.contains('liked')?(n+1):(n-1); var i=this.querySelector('i'); i.className=this.classList.contains('liked')?'fas fa-heart':'far fa-heart';">
+                <i class="far fa-heart"></i><span>18</span>
+              </button>
+            </div>
+          <h1 class="text-xl font-bold text-gray-800 mb-3">自製短片：校園生態觀察紀錄</h1>
+          <div class="flex items-center gap-3 mb-4 pb-4 border-b border-gray-100">
+            <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+              <i class="fas fa-user text-purple-500"></i>
+            </div>
+            <div>
+              <p class="font-medium text-gray-800">李小華</p>
+              <p class="text-xs text-gray-400">上傳於 114/03/10</p>
+            </div>
+          </div>
+          <div>
+            <h3 class="font-bold text-gray-700 mb-2"><i class="fas fa-align-left mr-1 text-gray-400"></i> 學習說明</h3>
+            <p class="text-gray-600 leading-relaxed">在校園中花了一個月的時間，觀察並記錄各種動植物的生態。使用手機拍攝後以 iMovie 剪輯，配上旁白說明。透過這次觀察，我發現校園裡有超過 20 種不同的鳥類，還有許多以前沒注意到的昆蟲和植物。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="text-center py-6 mt-12 text-gray-400 text-sm"><p>竹山高中 自主學習成果展示平台</p></footer>
+</body>
+</html>

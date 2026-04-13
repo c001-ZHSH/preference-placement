@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>我的作品 - 自主學習成果展示平台</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    * { font-family: 'Noto Sans TC', sans-serif; }
+    body { background-color: #f0f4f8; min-height: 100vh; }
+    .navbar { background: linear-gradient(135deg, #1e3a5f 0%, #2d5f8a 100%); box-shadow: 0 2px 10px rgba(0,0,0,0.15); }
+    .navbar a { transition: all 0.2s ease; text-decoration: none; }
+    .navbar a:hover { background-color: rgba(255,255,255,0.15); border-radius: 8px; }
+    .navbar a.active { background-color: rgba(255,255,255,0.2); border-radius: 8px; font-weight: 500; }
+    .btn-primary { background: linear-gradient(135deg, #1e3a5f 0%, #2d5f8a 100%); color: white; padding: 10px 24px; border-radius: 10px; border: none; cursor: pointer; font-weight: 500; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 8px; }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(30,58,95,0.3); }
+    .btn-secondary { background: #e2e8f0; color: #4a5568; padding: 10px 24px; border-radius: 10px; border: none; cursor: pointer; font-weight: 500; }
+    .btn-danger { background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%); color: white; padding: 10px 24px; border-radius: 10px; border: none; cursor: pointer; font-weight: 500; }
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 500; }
+    .badge-pdf { background: #fed7d7; color: #c53030; }
+    .badge-video { background: #e9d8fd; color: #6b46c1; }
+    .form-input { width: 100%; padding: 12px 16px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 1rem; outline: none; box-sizing: border-box; }
+    .form-input:focus { border-color: #2d5f8a; }
+
+    .my-work-item { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); display: flex; gap: 16px; align-items: flex-start; transition: all 0.2s; }
+    .my-work-item:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.12); }
+    .my-work-thumb { width: 80px; height: 80px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.8rem; flex-shrink: 0; }
+    .my-work-thumb.pdf { background: linear-gradient(135deg, #e53e3e, #c53030); }
+    .my-work-thumb.video { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+    .edit-form { background: #f7fafc; border-radius: 12px; padding: 16px; margin-top: 12px; display: none; }
+    .edit-form.active { display: block; }
+  </style>
+</head>
+<body>
+  <nav class="navbar px-4 py-3">
+    <div class="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-3">
+      <a href="index.html" class="flex items-center gap-2 text-white text-lg font-bold" style="text-decoration:none;">
+        <i class="fas fa-graduation-cap text-2xl"></i><span>自主學習成果展示平台</span>
+      </a>
+      <div class="flex items-center gap-2 flex-wrap">
+        <a href="index.html" class="text-white text-sm px-3 py-2" style="text-decoration:none;"><i class="fas fa-home mr-1"></i> 首頁</a>
+        <a href="upload.html" class="text-white text-sm px-3 py-2" style="text-decoration:none;"><i class="fas fa-cloud-upload-alt mr-1"></i> 上傳作品</a>
+        <a href="my-works.html" class="text-white text-sm px-3 py-2 active" style="text-decoration:none;"><i class="fas fa-folder-open mr-1"></i> 我的作品</a>
+        <a href="admin.html" class="text-white text-sm px-3 py-2" style="text-decoration:none;"><i class="fas fa-cog mr-1"></i> 管理後台</a>
+      </div>
+      <div class="flex items-center gap-2 text-white text-sm"><i class="fas fa-user-circle text-xl"></i><span>110001</span></div>
+    </div>
+  </nav>
+
+  <div class="max-w-3xl mx-auto px-4 py-8">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-800 mb-1"><i class="fas fa-folder-open mr-2 text-blue-500"></i>我的作品</h1>
+        <p class="text-gray-500">管理你上傳的自主學習成果</p>
+      </div>
+      <a href="upload.html" class="btn-primary" style="text-decoration:none;"><i class="fas fa-plus"></i> 新增作品</a>
+    </div>
+
+    <div class="flex flex-col gap-4">
+      <!-- 作品 1 -->
+      <div class="my-work-item">
+        <div class="my-work-thumb pdf" style="cursor:pointer;"><i class="fas fa-file-pdf"></i></div>
+        <div class="flex-1">
+          <div class="flex items-start justify-between">
+            <div class="flex-1 cursor-pointer" onclick="location.href='viewer-pdf.html'">
+              <h3 class="font-bold text-gray-800">探索人工智慧在教育中的應用</h3>
+              <p class="text-sm text-gray-500 mt-1">本報告探討了人工智慧技術如何應用於現代教育中...</p>
+              <div class="flex items-center gap-3 mt-2">
+                <span class="badge badge-pdf"><i class="fas fa-file-pdf mr-1"></i>PDF</span>
+                <span class="text-xs text-gray-400">114/03/15</span>
+              </div>
+            </div>
+            <div class="flex gap-2 ml-4 flex-shrink-0">
+              <button class="text-gray-400 hover:text-blue-500 p-1" onclick="toggleEdit('1')" title="編輯"><i class="fas fa-pen"></i></button>
+              <button class="text-gray-400 hover:text-red-500 p-1" onclick="alert('確定要刪除此作品嗎？（預覽模式）')" title="刪除"><i class="fas fa-trash"></i></button>
+            </div>
+          </div>
+          <div class="edit-form" id="edit-form-1">
+            <div class="mb-3">
+              <label class="block text-sm font-medium text-gray-700 mb-1">標題</label>
+              <input type="text" class="form-input" value="探索人工智慧在教育中的應用">
+            </div>
+            <div class="mb-3">
+              <label class="block text-sm font-medium text-gray-700 mb-1">說明</label>
+              <textarea class="form-input" rows="3">本報告探討了人工智慧技術如何應用於現代教育中，包括個人化學習、智慧評量系統等面向。</textarea>
+            </div>
+            <div class="flex gap-2 justify-end">
+              <button class="btn-secondary" onclick="toggleEdit('1')">取消</button>
+              <button class="btn-primary" onclick="alert('儲存成功！（預覽模式）'); toggleEdit('1');"><i class="fas fa-save mr-1"></i>儲存</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 作品 2 -->
+      <div class="my-work-item">
+        <div class="my-work-thumb video" style="cursor:pointer;"><i class="fas fa-video"></i></div>
+        <div class="flex-1">
+          <div class="flex items-start justify-between">
+            <div class="flex-1 cursor-pointer" onclick="location.href='viewer-video.html'">
+              <h3 class="font-bold text-gray-800">自製短片：校園生態觀察紀錄</h3>
+              <p class="text-sm text-gray-500 mt-1">在校園中觀察並記錄各種動植物的生態...</p>
+              <div class="flex items-center gap-3 mt-2">
+                <span class="badge badge-video"><i class="fas fa-video mr-1"></i>影片</span>
+                <span class="text-xs text-gray-400">114/03/10</span>
+              </div>
+            </div>
+            <div class="flex gap-2 ml-4 flex-shrink-0">
+              <button class="text-gray-400 hover:text-blue-500 p-1" onclick="toggleEdit('2')" title="編輯"><i class="fas fa-pen"></i></button>
+              <button class="text-gray-400 hover:text-red-500 p-1" onclick="alert('確定要刪除此作品嗎？（預覽模式）')" title="刪除"><i class="fas fa-trash"></i></button>
+            </div>
+          </div>
+          <div class="edit-form" id="edit-form-2">
+            <div class="mb-3">
+              <label class="block text-sm font-medium text-gray-700 mb-1">標題</label>
+              <input type="text" class="form-input" value="自製短片：校園生態觀察紀錄">
+            </div>
+            <div class="mb-3">
+              <label class="block text-sm font-medium text-gray-700 mb-1">說明</label>
+              <textarea class="form-input" rows="3">在校園中觀察並記錄各種動植物的生態。</textarea>
+            </div>
+            <div class="flex gap-2 justify-end">
+              <button class="btn-secondary" onclick="toggleEdit('2')">取消</button>
+              <button class="btn-primary" onclick="alert('儲存成功！（預覽模式）'); toggleEdit('2');"><i class="fas fa-save mr-1"></i>儲存</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 作品 3 -->
+      <div class="my-work-item">
+        <div class="my-work-thumb pdf" style="cursor:pointer;"><i class="fas fa-file-pdf"></i></div>
+        <div class="flex-1">
+          <div class="flex items-start justify-between">
+            <div class="flex-1">
+              <h3 class="font-bold text-gray-800">Python 程式設計學習心得</h3>
+              <p class="text-sm text-gray-500 mt-1">從零開始學習 Python，完成了三個小專案...</p>
+              <div class="flex items-center gap-3 mt-2">
+                <span class="badge badge-pdf"><i class="fas fa-file-pdf mr-1"></i>PDF</span>
+                <span class="text-xs text-gray-400">114/02/28</span>
+              </div>
+            </div>
+            <div class="flex gap-2 ml-4 flex-shrink-0">
+              <button class="text-gray-400 hover:text-blue-500 p-1" title="編輯"><i class="fas fa-pen"></i></button>
+              <button class="text-gray-400 hover:text-red-500 p-1" title="刪除"><i class="fas fa-trash"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="text-center py-6 mt-12 text-gray-400 text-sm"><p>竹山高中 自主學習成果展示平台</p></footer>
+
+  <script>
+    function toggleEdit(id) {
+      document.getElementById('edit-form-' + id).classList.toggle('active');
+    }
+  </script>
+</body>
+</html>

@@ -169,6 +169,9 @@ function createWorkCard(work) {
   var thumbIcon = work.fileType === 'pdf' ? 'fa-file-pdf' : 'fa-play-circle';
   var baseUrl = getBaseUrl();
 
+  var likeCount = work.likeCount || 0;
+  var likedClass = work.liked ? 'color:#e53e3e;' : '';
+
   return '' +
     '<div class="work-card" onclick="window.top.location.href=\'' + baseUrl + '?page=viewer&id=' + work.id + '\'">' +
       '<div class="thumbnail ' + thumbClass + '">' +
@@ -181,9 +184,15 @@ function createWorkCard(work) {
         '</div>' +
         '<h3 class="font-bold text-gray-800 mb-1">' + escapeHtml(truncate(work.title, 30)) + '</h3>' +
         '<p class="text-sm text-gray-500 mb-2">' + escapeHtml(truncate(work.description, 50)) + '</p>' +
-        '<div class="flex items-center gap-1 text-xs text-gray-400">' +
-          '<i class="fas fa-user"></i>' +
-          '<span>' + escapeHtml(work.studentName || work.studentId) + '</span>' +
+        '<div class="flex items-center justify-between">' +
+          '<div class="flex items-center gap-1 text-xs text-gray-400">' +
+            '<i class="fas fa-user"></i>' +
+            '<span>' + escapeHtml(work.studentName || work.studentId) + '</span>' +
+          '</div>' +
+          '<div class="flex items-center gap-1 text-xs" style="' + likedClass + (likedClass ? '' : 'color:#a0aec0;') + '">' +
+            '<i class="fas fa-heart"></i>' +
+            '<span>' + likeCount + '</span>' +
+          '</div>' +
         '</div>' +
       '</div>' +
     '</div>';

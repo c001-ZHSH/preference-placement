@@ -73,9 +73,18 @@ function handleApiRequest(action, params) {
     switch (action) {
       // 作品相關
       case 'getAllWorks':
-        return { success: true, data: getAllWorks(params.page, params.pageSize, params.search, params.fileType) };
+        return { success: true, data: getAllWorksWithLikes(params.page, params.pageSize, params.search, params.fileType, params.sortBy, userEmail) };
       case 'getWorkById':
-        return { success: true, data: getWorkById(params.id) };
+        var work = getWorkById(params.id);
+        if (work) {
+          work.likeCount = getLikeCount(params.id);
+          work.liked = hasLiked(params.id, userEmail);
+        }
+        return { success: true, data: work };
+
+      // 按讚功能
+      case 'toggleLike':
+        return { success: true, data: toggleLike(params.workId, userEmail) };
       case 'getMyWorks':
         return { success: true, data: getWorksByStudent(getStudentId(userEmail)) };
       case 'createWork':

@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>自主學習成果展示平台 - 預覽</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    * { font-family: 'Noto Sans TC', sans-serif; }
+    body { background-color: #f0f4f8; min-height: 100vh; }
+
+    .navbar {
+      background: linear-gradient(135deg, #1e3a5f 0%, #2d5f8a 100%);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    }
+    .navbar a { transition: all 0.2s ease; text-decoration: none; }
+    .navbar a:hover { background-color: rgba(255,255,255,0.15); border-radius: 8px; }
+    .navbar a.active { background-color: rgba(255,255,255,0.2); border-radius: 8px; font-weight: 500; }
+
+    .work-card {
+      background: white; border-radius: 16px; overflow: hidden;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08); transition: all 0.3s ease; cursor: pointer;
+    }
+    .work-card:hover { transform: translateY(-4px); box-shadow: 0 8px 30px rgba(0,0,0,0.15); }
+
+    .work-card .thumbnail {
+      width: 100%; height: 200px; display: flex;
+      align-items: center; justify-content: center; color: white; font-size: 3rem;
+    }
+    .work-card .thumbnail.pdf-thumb { background: linear-gradient(135deg, #e53e3e 0%, #c53030 100%); }
+    .work-card .thumbnail.video-thumb { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #1e3a5f 0%, #2d5f8a 100%);
+      color: white; padding: 10px 24px; border-radius: 10px; border: none;
+      cursor: pointer; font-weight: 500; transition: all 0.2s ease;
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(30,58,95,0.3); }
+
+    .btn-secondary {
+      background: #e2e8f0; color: #4a5568; padding: 10px 24px; border-radius: 10px;
+      border: none; cursor: pointer; font-weight: 500; transition: all 0.2s ease;
+    }
+    .btn-secondary:hover { background: #cbd5e0; }
+    .btn-secondary.active { background: #2d5f8a; color: white; }
+
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 500; }
+    .badge-pdf { background: #fed7d7; color: #c53030; }
+    .badge-video { background: #e9d8fd; color: #6b46c1; }
+
+    .search-bar {
+      background: white; border-radius: 12px; padding: 8px 16px;
+      display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .search-bar input { border: none; outline: none; flex: 1; font-size: 1rem; }
+
+    .pagination { display: flex; align-items: center; gap: 4px; }
+    .pagination button {
+      width: 40px; height: 40px; border-radius: 10px; border: 2px solid #e2e8f0;
+      background: white; cursor: pointer; font-weight: 500; transition: all 0.2s;
+    }
+    .pagination button:hover { border-color: #2d5f8a; color: #2d5f8a; }
+    .pagination button.active { background: #2d5f8a; color: white; border-color: #2d5f8a; }
+
+    .page-link { text-decoration: none; color: white; }
+    .page-link:hover { text-decoration: none; }
+
+    @media (max-width: 768px) {
+      .work-card .thumbnail { height: 160px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- 導覽列 -->
+  <nav class="navbar px-4 py-3">
+    <div class="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-3">
+      <a href="index.html" class="flex items-center gap-2 text-white text-lg font-bold page-link">
+        <i class="fas fa-graduation-cap text-2xl"></i>
+        <span>自主學習成果展示平台</span>
+      </a>
+      <div class="flex items-center gap-2 flex-wrap">
+        <a href="index.html" class="text-white text-sm px-3 py-2 page-link active">
+          <i class="fas fa-home mr-1"></i> 首頁
+        </a>
+        <a href="upload.html" class="text-white text-sm px-3 py-2 page-link">
+          <i class="fas fa-cloud-upload-alt mr-1"></i> 上傳作品
+        </a>
+        <a href="my-works.html" class="text-white text-sm px-3 py-2 page-link">
+          <i class="fas fa-folder-open mr-1"></i> 我的作品
+        </a>
+        <a href="admin.html" class="text-white text-sm px-3 py-2 page-link">
+          <i class="fas fa-cog mr-1"></i> 管理後台
+        </a>
+      </div>
+      <div class="flex items-center gap-2 text-white text-sm">
+        <i class="fas fa-user-circle text-xl"></i>
+        <span>110001</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- 主要內容 -->
+  <div class="max-w-7xl mx-auto px-4 py-8">
+    <!-- 標題區 -->
+    <div class="text-center mb-8">
+      <h1 class="text-3xl font-bold text-gray-800 mb-2">自主學習成果展示</h1>
+      <p class="text-gray-500">瀏覽同學們的學習成果，一起互相學習成長！</p>
+    </div>
+
+    <!-- 搜尋與篩選列 -->
+    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-4">
+      <div class="search-bar flex-1">
+        <i class="fas fa-search text-gray-400"></i>
+        <input type="text" placeholder="搜尋作品標題、學號或姓名...">
+      </div>
+      <div class="flex gap-2">
+        <button class="btn-secondary active"><i class="fas fa-th-large mr-1"></i> 全部</button>
+        <button class="btn-secondary"><i class="fas fa-file-pdf mr-1"></i> PDF</button>
+        <button class="btn-secondary"><i class="fas fa-video mr-1"></i> 影片</button>
+      </div>
+    </div>
+
+    <!-- 排序列 -->
+    <div class="flex items-center gap-2 mb-8">
+      <span class="text-sm text-gray-500"><i class="fas fa-sort mr-1"></i>排序：</span>
+      <button class="btn-secondary active" style="padding:6px 16px; font-size:0.85rem; background:#2d5f8a; color:white;">
+        <i class="fas fa-clock mr-1"></i> 最新上傳
+      </button>
+      <button class="btn-secondary" style="padding:6px 16px; font-size:0.85rem;">
+        <i class="fas fa-heart mr-1"></i> 最多喜歡
+      </button>
+    </div>
+
+    <!-- 作品列表 -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+
+      <!-- 卡片 1 -->
+      <div class="work-card" onclick="location.href='viewer-pdf.html'">
+        <div class="thumbnail pdf-thumb"><i class="fas fa-file-pdf"></i></div>
+        <div class="p-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="badge badge-pdf"><i class="fas fa-file-pdf mr-1"></i>PDF</span>
+            <span class="text-xs text-gray-400">114/03/15</span>
+          </div>
+          <h3 class="font-bold text-gray-800 mb-1">探索人工智慧在教育中的應用</h3>
+          <p class="text-sm text-gray-500 mb-2">研究 AI 如何改變傳統教學模式...</p>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1 text-xs text-gray-400"><i class="fas fa-user"></i><span>王小明</span></div>
+            <div class="flex items-center gap-1 text-xs" style="color:#e53e3e;"><i class="fas fa-heart"></i><span>24</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 卡片 2 -->
+      <div class="work-card" onclick="location.href='viewer-video.html'">
+        <div class="thumbnail video-thumb"><i class="fas fa-play-circle"></i></div>
+        <div class="p-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="badge badge-video"><i class="fas fa-video mr-1"></i>影片</span>
+            <span class="text-xs text-gray-400">114/03/10</span>
+          </div>
+          <h3 class="font-bold text-gray-800 mb-1">自製短片：校園生態觀察紀錄</h3>
+          <p class="text-sm text-gray-500 mb-2">在校園中觀察並記錄各種動植物...</p>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1 text-xs text-gray-400"><i class="fas fa-user"></i><span>李小華</span></div>
+            <div class="flex items-center gap-1 text-xs" style="color:#e53e3e;"><i class="fas fa-heart"></i><span>18</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 卡片 3 -->
+      <div class="work-card">
+        <div class="thumbnail pdf-thumb"><i class="fas fa-file-pdf"></i></div>
+        <div class="p-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="badge badge-pdf"><i class="fas fa-file-pdf mr-1"></i>PDF</span>
+            <span class="text-xs text-gray-400">114/02/28</span>
+          </div>
+          <h3 class="font-bold text-gray-800 mb-1">Python 程式設計學習心得</h3>
+          <p class="text-sm text-gray-500 mb-2">從零開始學習 Python，完成了三個小專案...</p>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1 text-xs text-gray-400"><i class="fas fa-user"></i><span>張大偉</span></div>
+            <div class="flex items-center gap-1 text-xs" style="color:#a0aec0;"><i class="fas fa-heart"></i><span>12</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 卡片 4 -->
+      <div class="work-card">
+        <div class="thumbnail video-thumb"><i class="fas fa-play-circle"></i></div>
+        <div class="p-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="badge badge-video"><i class="fas fa-video mr-1"></i>影片</span>
+            <span class="text-xs text-gray-400">114/02/20</span>
+          </div>
+          <h3 class="font-bold text-gray-800 mb-1">日語五十音學習挑戰</h3>
+          <p class="text-sm text-gray-500 mb-2">記錄了 30 天自學日語的過程...</p>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1 text-xs text-gray-400"><i class="fas fa-user"></i><span>陳美玲</span></div>
+            <div class="flex items-center gap-1 text-xs" style="color:#a0aec0;"><i class="fas fa-heart"></i><span>9</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 卡片 5 -->
+      <div class="work-card">
+        <div class="thumbnail pdf-thumb"><i class="fas fa-file-pdf"></i></div>
+        <div class="p-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="badge badge-pdf"><i class="fas fa-file-pdf mr-1"></i>PDF</span>
+            <span class="text-xs text-gray-400">114/02/15</span>
+          </div>
+          <h3 class="font-bold text-gray-800 mb-1">食品科學：自製優格實驗報告</h3>
+          <p class="text-sm text-gray-500 mb-2">探索不同溫度對優格發酵的影響...</p>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1 text-xs text-gray-400"><i class="fas fa-user"></i><span>林志豪</span></div>
+            <div class="flex items-center gap-1 text-xs" style="color:#a0aec0;"><i class="fas fa-heart"></i><span>7</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 卡片 6 -->
+      <div class="work-card">
+        <div class="thumbnail video-thumb"><i class="fas fa-play-circle"></i></div>
+        <div class="p-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="badge badge-video"><i class="fas fa-video mr-1"></i>影片</span>
+            <span class="text-xs text-gray-400">114/02/01</span>
+          </div>
+          <h3 class="font-bold text-gray-800 mb-1">吉他彈奏學習歷程影片</h3>
+          <p class="text-sm text-gray-500 mb-2">從完全不會到能彈奏一首完整曲子...</p>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1 text-xs text-gray-400"><i class="fas fa-user"></i><span>黃雅琪</span></div>
+            <div class="flex items-center gap-1 text-xs" style="color:#e53e3e;"><i class="fas fa-heart"></i><span>31</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 卡片 7 -->
+      <div class="work-card">
+        <div class="thumbnail pdf-thumb"><i class="fas fa-file-pdf"></i></div>
+        <div class="p-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="badge badge-pdf"><i class="fas fa-file-pdf mr-1"></i>PDF</span>
+            <span class="text-xs text-gray-400">114/01/20</span>
+          </div>
+          <h3 class="font-bold text-gray-800 mb-1">社區志工服務學習報告</h3>
+          <p class="text-sm text-gray-500 mb-2">記錄在社區長照機構服務的心得...</p>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1 text-xs text-gray-400"><i class="fas fa-user"></i><span>吳佳穎</span></div>
+            <div class="flex items-center gap-1 text-xs" style="color:#a0aec0;"><i class="fas fa-heart"></i><span>5</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 卡片 8 -->
+      <div class="work-card">
+        <div class="thumbnail video-thumb"><i class="fas fa-play-circle"></i></div>
+        <div class="p-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="badge badge-video"><i class="fas fa-video mr-1"></i>影片</span>
+            <span class="text-xs text-gray-400">114/01/10</span>
+          </div>
+          <h3 class="font-bold text-gray-800 mb-1">物理實驗：自製電磁砲</h3>
+          <p class="text-sm text-gray-500 mb-2">運用電磁學原理設計並製作電磁砲...</p>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1 text-xs text-gray-400"><i class="fas fa-user"></i><span>劉建宏</span></div>
+            <div class="flex items-center gap-1 text-xs" style="color:#a0aec0;"><i class="fas fa-heart"></i><span>15</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 分頁 -->
+    <div class="flex justify-center mt-8">
+      <div class="pagination">
+        <button><i class="fas fa-chevron-left"></i></button>
+        <button class="active">1</button>
+        <button>2</button>
+        <button>3</button>
+        <button><i class="fas fa-chevron-right"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="text-center py-6 mt-12 text-gray-400 text-sm">
+    <p>竹山高中 自主學習成果展示平台</p>
+  </footer>
+</body>
+</html>

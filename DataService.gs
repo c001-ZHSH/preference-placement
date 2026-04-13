@@ -182,3 +182,159 @@ function rowToWork(headers, row) {
   }
   return work;
 }
+
+// ============================================
+// 按讚功能
+// ============================================
+
+/**
+ * 取得 likes 資料表
+ */
+function getLikesSheet() {
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName('likes');
+  if (!sheet) {
+    sheet = ss.insertSheet('likes');
+    sheet.appendRow(['workId', 'userEmail', 'createdAt']);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+/**
+ * 按讚 / 取消讚
+ */
+function toggleLike(workId, userEmail) {
+  var sheet = getLikesSheet();
+  var data = sheet.getDataRange().getValues();
+
+  // 檢查是否已按讚
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === workId && data[i][1] === userEmail) {
+      // 已按讚 → 取消讚
+      sheet.deleteRow(i + 1);
+      return { liked: false, likeCount: getLikeCount(workId) };
+    }
+  }
+
+  // 未按讚 → 新增讚
+  sheet.appendRow([workId, userEmail, new Date().toISOString()]);
+  return { liked: true, likeCount: getLikeCount(workId) };
+}
+
+/**
+ * 取得某作品的按讚數
+ */
+function getLikeCount(workId) {
+  var sheet = getLikesSheet();
+  var data = sheet.getDataRange().getValues();
+  var count = 0;
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === workId) count++;
+  }
+  return count;
+}
+
+/**
+ * 取得某使用者是否已按讚某作品
+ */
+function hasLiked(workId, userEmail) {
+  var sheet = getLikesSheet();
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === workId && data[i][1] === userEmail) return true;
+  }
+  return false;
+}
+
+/**
+ * 批次取得多個作品的按讚資訊（優化效能）
+ */
+function getBatchLikeInfo(workIds, userEmail) {
+  var sheet = getLikesSheet();
+  var data = sheet.getDataRange().getValues();
+  var counts = {};
+  var userLikes = {};
+
+  // 初始化
+  for (var k = 0; k < workIds.length; k++) {
+    counts[workIds[k]] = 0;
+    userLikes[workIds[k]] = false;
+  }
+
+  for (var i = 1; i < data.length; i++) {
+    var wid = data[i][0];
+    if (counts.hasOwnProperty(wid)) {
+      counts[wid]++;
+      if (data[i][1] === userEmail) {
+        userLikes[wid] = true;
+      }
+    }
+  }
+
+  return { counts: counts, userLikes: userLikes };
+}
+
+/**
+ * 取得所有作品（支援按讚數排序）
+ */
+function getAllWorksWithLikes(page, pageSize, search, fileType, sortBy, userEmail) {
+  page = page || 1;
+  pageSize = pageSize || 12;
+  search = search ? search.toLowerCase() : '';
+  fileType = fileType || '';
+  sortBy = sortBy || 'newest';
+
+  var sheet = getWorksSheet();
+  if (!sheet) return { works: [], total: 0, page: page, pageSize: pageSize };
+
+  var data = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var works = [];
+
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var work = rowToWork(headers, row);
+
+    if (search) {
+      var matchText = (work.title + work.studentId + work.studentName + work.description).toLowerCase();
+      if (matchText.indexOf(search) === -1) continue;
+    }
+
+    if (fileType && work.fileType !== fileType) continue;
+
+    works.push(work);
+  }
+
+  // 取得按讚資訊
+  var workIds = works.map(function(w) { return w.id; });
+  var likeInfo = getBatchLikeInfo(workIds, userEmail);
+
+  // 將按讚資訊附加到作品
+  for (var j = 0; j < works.length; j++) {
+    works[j].likeCount = likeInfo.counts[works[j].id] || 0;
+    works[j].liked = likeInfo.userLikes[works[j].id] || false;
+  }
+
+  // 排序
+  if (sortBy === 'likes') {
+    works.sort(function(a, b) { return b.likeCount - a.likeCount; });
+  } else {
+    // newest (預設) - 依上傳時間新到舊
+    works.sort(function(a, b) {
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+  }
+
+  var total = works.length;
+  var start = (page - 1) * pageSize;
+  var paged = works.slice(start, start + pageSize);
+
+  return {
+    works: paged,
+    total: total,
+    page: page,
+    pageSize: pageSize,
+    totalPages: Math.ceil(total / pageSize)
+  };
+}
