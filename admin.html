@@ -98,6 +98,7 @@
                 <th style="width:40px;"></th>
                 <th>學號</th>
                 <th>姓名</th>
+                <th>班級</th>
                 <th>標題</th>
                 <th>類別</th>
                 <th>類型</th>
@@ -253,6 +254,7 @@
               '<td><input type="checkbox" value="' + work.id + '" onchange="toggleSearchSelect(\'' + work.id + '\', this.checked)"></td>' +
               '<td>' + escapeHtml(work.studentId) + '</td>' +
               '<td>' + escapeHtml(work.studentName || '-') + '</td>' +
+              '<td class="text-xs">' + escapeHtml(work.className || '-') + '</td>' +
               '<td><a href="' + getBaseUrl() + '?page=viewer&id=' + work.id + '" target="_blank" style="color:#2d5f8a;">' + escapeHtml(truncate(work.title, 30)) + '</a></td>' +
               '<td class="text-xs">' + escapeHtml(work.category || '-') + '</td>' +
               '<td>' + getFileTypeBadge(work.fileType) + '</td>' +
@@ -463,6 +465,7 @@
               '<td><input type="checkbox" value="' + work.id + '" onchange="toggleSelect(\'' + work.id + '\', this.checked)"></td>' +
               '<td>' + escapeHtml(work.studentId) + '</td>' +
               '<td>' + escapeHtml(work.studentName || '-') + '</td>' +
+              '<td class="text-xs">' + escapeHtml(work.className || '-') + '</td>' +
               '<td><a href="' + getBaseUrl() + '?page=viewer&id=' + work.id + '" target="_blank" style="color:#2d5f8a;">' + escapeHtml(truncate(work.title, 30)) + '</a></td>' +
               '<td class="text-xs">' + escapeHtml(work.category || '-') + '</td>' +
               '<td>' + getFileTypeBadge(work.fileType) + '</td>' +

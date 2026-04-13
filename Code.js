@@ -251,7 +251,7 @@ function initializeSpreadsheet() {
     worksSheet.appendRow([
       'id', 'studentId', 'studentName', 'studentEmail',
       'title', 'description', 'fileType', 'driveFileId',
-      'thumbnailId', 'category', 'createdAt', 'updatedAt'
+      'thumbnailId', 'category', 'className', 'createdAt', 'updatedAt'
     ]);
     worksSheet.setFrozenRows(1);
   }
@@ -280,7 +280,7 @@ function initializeSpreadsheet() {
   var studentsSheet = ss.getSheetByName('students');
   if (!studentsSheet) {
     studentsSheet = ss.insertSheet('students');
-    studentsSheet.appendRow(['email', 'name', 'enrollYear']);
+    studentsSheet.appendRow(['email', 'name', 'enrollYear', 'class']);
     studentsSheet.setFrozenRows(1);
     // 範例學生（請修改為實際學生資料，或批次匯入）
     studentsSheet.appendRow(['110001@mail2.chshs.ntpc.edu.tw', '範例學生']);

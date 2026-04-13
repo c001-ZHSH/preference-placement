@@ -180,6 +180,7 @@ function createWork(params) {
   var sheet = getWorksSheet();
   var userEmail = Session.getActiveUser().getEmail();
   var studentId = getStudentId(userEmail);
+  var studentClass = getStudentClass(userEmail);
   var now = new Date().toISOString();
   var id = generateId();
 
@@ -194,6 +195,7 @@ function createWork(params) {
     params.driveFileId,
     params.thumbnailId || '',
     params.category || '',
+    studentClass,
     now,
     now
   ];
@@ -224,7 +226,7 @@ function updateWork(id, params) {
         sheet.getRange(rowNum, 8).setValue(params.driveFileId);
       }
       if (params.category !== undefined) sheet.getRange(rowNum, 10).setValue(params.category);
-      sheet.getRange(rowNum, 12).setValue(new Date().toISOString());
+      sheet.getRange(rowNum, 13).setValue(new Date().toISOString());
       clearWorksCache();
       return true;
     }
@@ -528,7 +530,7 @@ function searchWorks(query) {
     var w = cached.works[i];
     var text = [
       w.title || '', w.studentId || '', w.studentName || '',
-      w.description || '', w.category || ''
+      w.description || '', w.category || '', w.className || ''
     ].join(' ').toLowerCase();
 
     if (text.indexOf(query) !== -1) {

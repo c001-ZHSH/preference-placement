@@ -30,7 +30,8 @@ function getStudentsList() {
     list.push({
       email: data[i][0].toString().toLowerCase(),
       name: data[i][1].toString(),
-      enrollYear: data[i][2] ? parseInt(data[i][2], 10) : 0
+      enrollYear: data[i][2] ? parseInt(data[i][2], 10) : 0,
+      className: data[i][3] ? data[i][3].toString() : ''
     });
   }
 
@@ -108,6 +109,19 @@ function getStudentName(email) {
 }
 
 /**
+ * 取得學生班級
+ */
+function getStudentClass(email) {
+  if (!email) return '';
+  var emailLower = email.toLowerCase();
+  var list = getStudentsList();
+  for (var i = 0; i < list.length; i++) {
+    if (list[i].email === emailLower) return list[i].className;
+  }
+  return '';
+}
+
+/**
  * 從 email 擷取學號
  */
 function getStudentId(email) {
@@ -162,6 +176,7 @@ function getUserInfo(email) {
     email: email,
     studentId: studentId,
     name: admin ? '管理員' : getStudentName(email),
+    className: student ? getStudentClass(email) : '',
     role: admin ? 'admin' : 'student',
     isAdmin: admin,
     isStudent: student,
