@@ -1,0 +1,7 @@
+preview/**
+.git/**
+.claude/**
+README.md
+.claspignore
+.gitignore
+node_modules/**

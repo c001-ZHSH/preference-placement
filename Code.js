@@ -2,6 +2,47 @@
 // Code.gs - 主要路由與頁面分發
 // ============================================
 
+/**
+ * 診斷工具 - 測試所有權限與設定是否正確
+ * 在編輯器中執行此函數，查看執行記錄
+ */
+function testAuthorization() {
+  // 1. 測試 email
+  var email = Session.getActiveUser().getEmail();
+  Logger.log('✅ 目前帳號: ' + email);
+
+  // 2. 測試 Script Properties
+  var ssId = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
+  var folderId = PropertiesService.getScriptProperties().getProperty('DRIVE_FOLDER_ID');
+  Logger.log('SPREADSHEET_ID: ' + (ssId || '❌ 未設定'));
+  Logger.log('DRIVE_FOLDER_ID: ' + (folderId || '❌ 未設定'));
+
+  // 3. 測試 Sheets 存取
+  try {
+    var ss = SpreadsheetApp.openById(ssId);
+    Logger.log('✅ Sheets 存取成功: ' + ss.getName());
+  } catch (e) {
+    Logger.log('❌ Sheets 存取失敗: ' + e.message);
+  }
+
+  // 4. 測試 Drive 資料夾存取
+  try {
+    var folder = DriveApp.getFolderById(folderId);
+    Logger.log('✅ Drive 資料夾存取成功: ' + folder.getName());
+
+    // 5. 測試在資料夾中建立檔案
+    var testBlob = Utilities.newBlob('test', 'text/plain', 'clasp-test.txt');
+    var testFile = folder.createFile(testBlob);
+    Logger.log('✅ 檔案建立成功: ' + testFile.getId());
+    testFile.setTrashed(true); // 刪除測試檔案
+    Logger.log('✅ 檔案刪除成功');
+  } catch (e) {
+    Logger.log('❌ Drive 操作失敗: ' + e.message);
+  }
+
+  Logger.log('--- 診斷完成 ---');
+}
+
 // === 設定區 ===
 // 請在 Google Apps Script 編輯器中設定以下 Script Properties：
 // DRIVE_FOLDER_ID: 學校 Google Drive 資料夾 ID
