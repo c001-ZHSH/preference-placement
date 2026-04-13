@@ -55,6 +55,14 @@
     .speed-menu button.active { color: #667eea; font-weight: bold; }
 
     .work-info-panel { background: white; border-radius: 16px; padding: 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+
+    .like-btn {
+      display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px;
+      border-radius: 20px; border: 2px solid #e2e8f0; background: white;
+      cursor: pointer; font-size: 0.9rem; font-weight: 500; color: #a0aec0; transition: all 0.2s;
+    }
+    .like-btn:hover { border-color: #fc8181; color: #e53e3e; }
+    .like-btn.liked { border-color: #e53e3e; color: #e53e3e; background: #fff5f5; }
   </style>
 </head>
 <body>
@@ -124,7 +132,12 @@
       <!-- 作品資訊 -->
       <div>
         <div class="work-info-panel">
-          <div class="mb-3"><span class="badge badge-video"><i class="fas fa-video mr-1"></i>影片</span></div>
+          <div class="flex items-center justify-between mb-3">
+              <span class="badge badge-video"><i class="fas fa-video mr-1"></i>影片</span>
+              <button class="like-btn" onclick="this.classList.toggle('liked'); var s=this.querySelector('span'); var n=parseInt(s.textContent); s.textContent=this.classList.contains('liked')?(n+1):(n-1); var i=this.querySelector('i'); i.className=this.classList.contains('liked')?'fas fa-heart':'far fa-heart';">
+                <i class="far fa-heart"></i><span>18</span>
+              </button>
+            </div>
           <h1 class="text-xl font-bold text-gray-800 mb-3">自製短片：校園生態觀察紀錄</h1>
           <div class="flex items-center gap-3 mb-4 pb-4 border-b border-gray-100">
             <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">

@@ -111,7 +111,7 @@
     </div>
 
     <!-- 搜尋與篩選列 -->
-    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-8">
+    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-4">
       <div class="search-bar flex-1">
         <i class="fas fa-search text-gray-400"></i>
         <input type="text" placeholder="搜尋作品標題、學號或姓名...">
@@ -121,6 +121,17 @@
         <button class="btn-secondary"><i class="fas fa-file-pdf mr-1"></i> PDF</button>
         <button class="btn-secondary"><i class="fas fa-video mr-1"></i> 影片</button>
       </div>
+    </div>
+
+    <!-- 排序列 -->
+    <div class="flex items-center gap-2 mb-8">
+      <span class="text-sm text-gray-500"><i class="fas fa-sort mr-1"></i>排序：</span>
+      <button class="btn-secondary active" style="padding:6px 16px; font-size:0.85rem; background:#2d5f8a; color:white;">
+        <i class="fas fa-clock mr-1"></i> 最新上傳
+      </button>
+      <button class="btn-secondary" style="padding:6px 16px; font-size:0.85rem;">
+        <i class="fas fa-heart mr-1"></i> 最多喜歡
+      </button>
     </div>
 
     <!-- 作品列表 -->
@@ -136,8 +147,9 @@
           </div>
           <h3 class="font-bold text-gray-800 mb-1">探索人工智慧在教育中的應用</h3>
           <p class="text-sm text-gray-500 mb-2">研究 AI 如何改變傳統教學模式...</p>
-          <div class="flex items-center gap-1 text-xs text-gray-400">
-            <i class="fas fa-user"></i><span>王小明</span>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1 text-xs text-gray-400"><i class="fas fa-user"></i><span>王小明</span></div>
+            <div class="flex items-center gap-1 text-xs" style="color:#e53e3e;"><i class="fas fa-heart"></i><span>24</span></div>
           </div>
         </div>
       </div>
@@ -152,8 +164,9 @@
           </div>
           <h3 class="font-bold text-gray-800 mb-1">自製短片：校園生態觀察紀錄</h3>
           <p class="text-sm text-gray-500 mb-2">在校園中觀察並記錄各種動植物...</p>
-          <div class="flex items-center gap-1 text-xs text-gray-400">
-            <i class="fas fa-user"></i><span>李小華</span>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1 text-xs text-gray-400"><i class="fas fa-user"></i><span>李小華</span></div>
+            <div class="flex items-center gap-1 text-xs" style="color:#e53e3e;"><i class="fas fa-heart"></i><span>18</span></div>
           </div>
         </div>
       </div>
@@ -168,8 +181,9 @@
           </div>
           <h3 class="font-bold text-gray-800 mb-1">Python 程式設計學習心得</h3>
           <p class="text-sm text-gray-500 mb-2">從零開始學習 Python，完成了三個小專案...</p>
-          <div class="flex items-center gap-1 text-xs text-gray-400">
-            <i class="fas fa-user"></i><span>張大偉</span>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1 text-xs text-gray-400"><i class="fas fa-user"></i><span>張大偉</span></div>
+            <div class="flex items-center gap-1 text-xs" style="color:#a0aec0;"><i class="fas fa-heart"></i><span>12</span></div>
           </div>
         </div>
       </div>
@@ -184,8 +198,9 @@
           </div>
           <h3 class="font-bold text-gray-800 mb-1">日語五十音學習挑戰</h3>
           <p class="text-sm text-gray-500 mb-2">記錄了 30 天自學日語的過程...</p>
-          <div class="flex items-center gap-1 text-xs text-gray-400">
-            <i class="fas fa-user"></i><span>陳美玲</span>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1 text-xs text-gray-400"><i class="fas fa-user"></i><span>陳美玲</span></div>
+            <div class="flex items-center gap-1 text-xs" style="color:#a0aec0;"><i class="fas fa-heart"></i><span>9</span></div>
           </div>
         </div>
       </div>
@@ -200,8 +215,9 @@
           </div>
           <h3 class="font-bold text-gray-800 mb-1">食品科學：自製優格實驗報告</h3>
           <p class="text-sm text-gray-500 mb-2">探索不同溫度對優格發酵的影響...</p>
-          <div class="flex items-center gap-1 text-xs text-gray-400">
-            <i class="fas fa-user"></i><span>林志豪</span>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1 text-xs text-gray-400"><i class="fas fa-user"></i><span>林志豪</span></div>
+            <div class="flex items-center gap-1 text-xs" style="color:#a0aec0;"><i class="fas fa-heart"></i><span>7</span></div>
           </div>
         </div>
       </div>
@@ -216,8 +232,9 @@
           </div>
           <h3 class="font-bold text-gray-800 mb-1">吉他彈奏學習歷程影片</h3>
           <p class="text-sm text-gray-500 mb-2">從完全不會到能彈奏一首完整曲子...</p>
-          <div class="flex items-center gap-1 text-xs text-gray-400">
-            <i class="fas fa-user"></i><span>黃雅琪</span>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1 text-xs text-gray-400"><i class="fas fa-user"></i><span>黃雅琪</span></div>
+            <div class="flex items-center gap-1 text-xs" style="color:#e53e3e;"><i class="fas fa-heart"></i><span>31</span></div>
           </div>
         </div>
       </div>
@@ -232,8 +249,9 @@
           </div>
           <h3 class="font-bold text-gray-800 mb-1">社區志工服務學習報告</h3>
           <p class="text-sm text-gray-500 mb-2">記錄在社區長照機構服務的心得...</p>
-          <div class="flex items-center gap-1 text-xs text-gray-400">
-            <i class="fas fa-user"></i><span>吳佳穎</span>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1 text-xs text-gray-400"><i class="fas fa-user"></i><span>吳佳穎</span></div>
+            <div class="flex items-center gap-1 text-xs" style="color:#a0aec0;"><i class="fas fa-heart"></i><span>5</span></div>
           </div>
         </div>
       </div>
@@ -248,8 +266,9 @@
           </div>
           <h3 class="font-bold text-gray-800 mb-1">物理實驗：自製電磁砲</h3>
           <p class="text-sm text-gray-500 mb-2">運用電磁學原理設計並製作電磁砲...</p>
-          <div class="flex items-center gap-1 text-xs text-gray-400">
-            <i class="fas fa-user"></i><span>劉建宏</span>
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-1 text-xs text-gray-400"><i class="fas fa-user"></i><span>劉建宏</span></div>
+            <div class="flex items-center gap-1 text-xs" style="color:#a0aec0;"><i class="fas fa-heart"></i><span>15</span></div>
           </div>
         </div>
       </div>
