@@ -26,8 +26,13 @@ function uploadFileFromBase64(base64Data, fileName, mimeType) {
   // 上傳到 Drive
   var file = folder.createFile(blob);
 
-  // 設定任何人（有連結）都可以檢視
-  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  // 嘗試設定分享權限（學校 Google Workspace 可能會限制）
+  try {
+    file.setSharing(DriveApp.Access.DOMAIN_WITH_LINK, DriveApp.Permission.VIEW);
+  } catch (e) {
+    // 如果連組織內分享都不允許，就跳過（檔案仍可透過 Apps Script 存取）
+    Logger.log('設定分享權限失敗（不影響功能）: ' + e.message);
+  }
 
   return {
     fileId: file.getId(),

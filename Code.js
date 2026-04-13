@@ -2,6 +2,47 @@
 // Code.gs - 主要路由與頁面分發
 // ============================================
 
+/**
+ * 診斷工具 - 測試所有權限與設定是否正確
+ * 在編輯器中執行此函數，查看執行記錄
+ */
+function testAuthorization() {
+  // 1. 測試 email
+  var email = Session.getActiveUser().getEmail();
+  Logger.log('✅ 目前帳號: ' + email);
+
+  // 2. 測試 Script Properties
+  var ssId = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
+  var folderId = PropertiesService.getScriptProperties().getProperty('DRIVE_FOLDER_ID');
+  Logger.log('SPREADSHEET_ID: ' + (ssId || '❌ 未設定'));
+  Logger.log('DRIVE_FOLDER_ID: ' + (folderId || '❌ 未設定'));
+
+  // 3. 測試 Sheets 存取
+  try {
+    var ss = SpreadsheetApp.openById(ssId);
+    Logger.log('✅ Sheets 存取成功: ' + ss.getName());
+  } catch (e) {
+    Logger.log('❌ Sheets 存取失敗: ' + e.message);
+  }
+
+  // 4. 測試 Drive 資料夾存取
+  try {
+    var folder = DriveApp.getFolderById(folderId);
+    Logger.log('✅ Drive 資料夾存取成功: ' + folder.getName());
+
+    // 5. 測試在資料夾中建立檔案
+    var testBlob = Utilities.newBlob('test', 'text/plain', 'clasp-test.txt');
+    var testFile = folder.createFile(testBlob);
+    Logger.log('✅ 檔案建立成功: ' + testFile.getId());
+    testFile.setTrashed(true); // 刪除測試檔案
+    Logger.log('✅ 檔案刪除成功');
+  } catch (e) {
+    Logger.log('❌ Drive 操作失敗: ' + e.message);
+  }
+
+  Logger.log('--- 診斷完成 ---');
+}
+
 // === 設定區 ===
 // 請在 Google Apps Script 編輯器中設定以下 Script Properties：
 // DRIVE_FOLDER_ID: 學校 Google Drive 資料夾 ID
@@ -11,6 +52,8 @@
  * Web App 進入點 - 處理 GET 請求
  */
 function doGet(e) {
+  e = e || {};
+  e.parameter = e.parameter || {};
   var page = e.parameter.page || 'index';
   var userEmail = Session.getActiveUser().getEmail();
 
@@ -22,9 +65,16 @@ function doGet(e) {
   }
 
   var template;
+  var userIsAdmin = isAdmin(userEmail);
+  var userIsStudent = isStudent(userEmail);
 
   switch (page) {
     case 'upload':
+      // 僅學生可上傳
+      if (!userIsStudent) {
+        template = HtmlService.createTemplateFromFile('index');
+        break;
+      }
       template = HtmlService.createTemplateFromFile('upload');
       break;
     case 'viewer':
@@ -32,13 +82,18 @@ function doGet(e) {
       template.workId = e.parameter.id || '';
       break;
     case 'my-works':
+      // 僅學生可查看自己的作品
+      if (!userIsStudent) {
+        template = HtmlService.createTemplateFromFile('index');
+        break;
+      }
       template = HtmlService.createTemplateFromFile('my-works');
       break;
     case 'admin':
-      if (!isAdmin(userEmail)) {
-        return HtmlService.createHtmlOutputFromFile('unauthorized')
-          .setTitle('自主學習成果展示平台')
-          .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+      // 僅管理員可進入後台
+      if (!userIsAdmin) {
+        template = HtmlService.createTemplateFromFile('index');
+        break;
       }
       template = HtmlService.createTemplateFromFile('admin');
       break;
@@ -54,9 +109,10 @@ function doGet(e) {
 
 /**
  * 在 HTML 中引入其他 HTML 檔案（用於共用元件）
+ * 使用 createTemplateFromFile 以支援模板標籤 <?= ?>
  */
 function include(filename) {
-  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+  return HtmlService.createTemplateFromFile(filename).evaluate().getContent();
 }
 
 /**
@@ -178,6 +234,16 @@ function initializeSpreadsheet() {
       'thumbnailId', 'createdAt', 'updatedAt'
     ]);
     worksSheet.setFrozenRows(1);
+  }
+
+  // 建立學生名單表
+  var studentsSheet = ss.getSheetByName('students');
+  if (!studentsSheet) {
+    studentsSheet = ss.insertSheet('students');
+    studentsSheet.appendRow(['email', 'name']);
+    studentsSheet.setFrozenRows(1);
+    // 範例學生（請修改為實際學生資料，或批次匯入）
+    studentsSheet.appendRow(['110001@mail2.chshs.ntpc.edu.tw', '範例學生']);
   }
 
   // 建立管理員名單表

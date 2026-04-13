@@ -11,18 +11,20 @@
       <span>自主學習成果展示平台</span>
     </a>
 
-    <!-- 導覽連結 -->
+    <!-- 導覽連結（由 JS 根據角色動態顯示） -->
     <div class="flex items-center gap-2 flex-wrap" id="nav-links">
       <a href="<?= ScriptApp.getService().getUrl() ?>" class="text-white text-sm px-3 py-2 no-underline" style="text-decoration:none;">
         <i class="fas fa-home mr-1"></i> 首頁
       </a>
-      <a href="<?= ScriptApp.getService().getUrl() ?>?page=upload" class="text-white text-sm px-3 py-2 no-underline" style="text-decoration:none;">
+      <!-- 學生專屬連結 -->
+      <a href="<?= ScriptApp.getService().getUrl() ?>?page=upload" class="text-white text-sm px-3 py-2 no-underline nav-student" style="text-decoration:none; display:none;">
         <i class="fas fa-cloud-upload-alt mr-1"></i> 上傳作品
       </a>
-      <a href="<?= ScriptApp.getService().getUrl() ?>?page=my-works" class="text-white text-sm px-3 py-2 no-underline" style="text-decoration:none;">
+      <a href="<?= ScriptApp.getService().getUrl() ?>?page=my-works" class="text-white text-sm px-3 py-2 no-underline nav-student" style="text-decoration:none; display:none;">
         <i class="fas fa-folder-open mr-1"></i> 我的作品
       </a>
-      <a href="<?= ScriptApp.getService().getUrl() ?>?page=admin" class="text-white text-sm px-3 py-2 no-underline" style="text-decoration:none;" id="nav-admin" style="display:none;">
+      <!-- 管理員專屬連結 -->
+      <a href="<?= ScriptApp.getService().getUrl() ?>?page=admin" class="text-white text-sm px-3 py-2 no-underline nav-admin" style="text-decoration:none; display:none;">
         <i class="fas fa-cog mr-1"></i> 管理後台
       </a>
     </div>
@@ -60,5 +62,5 @@
 
 <!-- Footer -->
 <footer class="text-center py-6 mt-12 text-gray-400 text-sm">
-  <p>竹山高中 自主學習成果展示平台</p>
+  <p>中和高中 自主學習成果展示平台</p>
 </footer>
