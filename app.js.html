@@ -1,0 +1,238 @@
+<script>
+// ============================================
+// app.js.html - 前端共用邏輯
+// ============================================
+
+// === 全域狀態 ===
+var currentUser = null;
+var confirmCallback = null;
+
+// === 初始化 ===
+document.addEventListener('DOMContentLoaded', function() {
+  loadCurrentUser();
+});
+
+/**
+ * 載入目前使用者資訊
+ */
+function loadCurrentUser() {
+  callApi('getCurrentUser', {}, function(result) {
+    currentUser = result;
+    var displayEl = document.getElementById('user-display-name');
+    if (displayEl) {
+      displayEl.textContent = result.studentId;
+    }
+    // 顯示管理員連結
+    if (result.isAdmin) {
+      var adminLink = document.getElementById('nav-admin');
+      if (adminLink) adminLink.style.display = '';
+    }
+    // 觸發頁面載入事件
+    if (typeof onUserLoaded === 'function') {
+      onUserLoaded(result);
+    }
+  });
+}
+
+/**
+ * 統一 API 呼叫
+ */
+function callApi(action, params, onSuccess, onError) {
+  google.script.run
+    .withSuccessHandler(function(response) {
+      if (response.success) {
+        if (onSuccess) onSuccess(response.data);
+      } else {
+        var errMsg = response.error || '操作失敗';
+        if (onError) {
+          onError(errMsg);
+        } else {
+          showToast(errMsg, 'error');
+        }
+      }
+    })
+    .withFailureHandler(function(err) {
+      var errMsg = err.message || '系統錯誤';
+      if (onError) {
+        onError(errMsg);
+      } else {
+        showToast(errMsg, 'error');
+      }
+    })
+    .handleApiRequest(action, params || {});
+}
+
+// === Toast 通知 ===
+function showToast(message, type) {
+  type = type || 'info';
+  var container = document.getElementById('toast-container');
+  var toast = document.createElement('div');
+  toast.className = 'toast toast-' + type;
+  toast.textContent = message;
+  container.appendChild(toast);
+
+  setTimeout(function() {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(100%)';
+    toast.style.transition = 'all 0.3s';
+    setTimeout(function() { toast.remove(); }, 300);
+  }, 3000);
+}
+
+// === 確認彈窗 ===
+function showConfirm(title, message, callback) {
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-message').textContent = message;
+  document.getElementById('confirm-modal').classList.add('active');
+  confirmCallback = callback;
+}
+
+function closeConfirm() {
+  document.getElementById('confirm-modal').classList.remove('active');
+  confirmCallback = null;
+}
+
+function confirmAction() {
+  closeConfirm();
+  if (confirmCallback) confirmCallback();
+}
+
+// === 載入遮罩 ===
+function showLoading(text) {
+  document.getElementById('loading-text').textContent = text || '載入中...';
+  document.getElementById('loading-overlay').classList.add('active');
+}
+
+function hideLoading() {
+  document.getElementById('loading-overlay').classList.remove('active');
+}
+
+// === 工具函數 ===
+
+/**
+ * 格式化日期
+ */
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  var d = new Date(dateStr);
+  var year = d.getFullYear() - 1911; // 轉民國年
+  var month = (d.getMonth() + 1);
+  var day = d.getDate();
+  return year + '/' + (month < 10 ? '0' : '') + month + '/' + (day < 10 ? '0' : '') + day;
+}
+
+/**
+ * 格式化檔案大小
+ */
+function formatFileSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+/**
+ * 檔案類型圖示
+ */
+function getFileTypeIcon(fileType) {
+  if (fileType === 'pdf') return '<i class="fas fa-file-pdf"></i>';
+  if (fileType === 'video') return '<i class="fas fa-video"></i>';
+  return '<i class="fas fa-file"></i>';
+}
+
+/**
+ * 檔案類型 badge
+ */
+function getFileTypeBadge(fileType) {
+  if (fileType === 'pdf') {
+    return '<span class="badge badge-pdf"><i class="fas fa-file-pdf mr-1"></i>PDF</span>';
+  }
+  if (fileType === 'video') {
+    return '<span class="badge badge-video"><i class="fas fa-video mr-1"></i>影片</span>';
+  }
+  return '';
+}
+
+/**
+ * 截斷文字
+ */
+function truncate(str, maxLen) {
+  if (!str) return '';
+  if (str.length <= maxLen) return str;
+  return str.substring(0, maxLen) + '...';
+}
+
+/**
+ * 建立作品卡片 HTML
+ */
+function createWorkCard(work) {
+  var thumbClass = work.fileType === 'pdf' ? 'pdf-thumb' : 'video-thumb';
+  var thumbIcon = work.fileType === 'pdf' ? 'fa-file-pdf' : 'fa-play-circle';
+  var baseUrl = getBaseUrl();
+
+  return '' +
+    '<div class="work-card" onclick="window.top.location.href=\'' + baseUrl + '?page=viewer&id=' + work.id + '\'">' +
+      '<div class="thumbnail ' + thumbClass + '">' +
+        '<i class="fas ' + thumbIcon + '"></i>' +
+      '</div>' +
+      '<div class="p-4">' +
+        '<div class="flex items-center justify-between mb-2">' +
+          getFileTypeBadge(work.fileType) +
+          '<span class="text-xs text-gray-400">' + formatDate(work.createdAt) + '</span>' +
+        '</div>' +
+        '<h3 class="font-bold text-gray-800 mb-1">' + escapeHtml(truncate(work.title, 30)) + '</h3>' +
+        '<p class="text-sm text-gray-500 mb-2">' + escapeHtml(truncate(work.description, 50)) + '</p>' +
+        '<div class="flex items-center gap-1 text-xs text-gray-400">' +
+          '<i class="fas fa-user"></i>' +
+          '<span>' + escapeHtml(work.studentName || work.studentId) + '</span>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+}
+
+/**
+ * HTML 跳脫（防 XSS）
+ */
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.toString()
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+/**
+ * 取得 Web App 基礎 URL
+ */
+function getBaseUrl() {
+  // 在 Google Apps Script 中，這個值會由模板注入
+  return '<?= ScriptApp.getService().getUrl() ?>';
+}
+
+/**
+ * 導覽到指定頁面
+ */
+function navigateTo(page, params) {
+  var url = getBaseUrl() + '?page=' + page;
+  if (params) {
+    for (var key in params) {
+      url += '&' + key + '=' + encodeURIComponent(params[key]);
+    }
+  }
+  window.top.location.href = url;
+}
+
+/**
+ * 將檔案轉為 Base64
+ */
+function fileToBase64(file, callback) {
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    // 移除 data:...;base64, 前綴
+    var base64 = e.target.result.split(',')[1];
+    callback(base64);
+  };
+  reader.readAsDataURL(file);
+}
+</script>

@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <?!= include('styles') ?>
+  <style>
+    .stat-card {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      text-align: center;
+    }
+
+    .stat-card .stat-number {
+      font-size: 2rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #1e3a5f, #667eea);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .year-row {
+      background: white;
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+      transition: all 0.2s;
+    }
+
+    .year-row:hover {
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .year-row.graduated {
+      border-left: 4px solid #e53e3e;
+    }
+
+    .year-row.current {
+      border-left: 4px solid #38a169;
+    }
+
+    .batch-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+
+    .batch-table th {
+      background: #f7fafc;
+      padding: 12px 16px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: #4a5568;
+      border-bottom: 2px solid #e2e8f0;
+    }
+
+    .batch-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 0.9rem;
+    }
+
+    .batch-table tr:hover td {
+      background: #f7fafc;
+    }
+
+    .batch-table input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: #2d5f8a;
+    }
+  </style>
+</head>
+<body>
+  <?!= include('components') ?>
+
+  <div class="max-w-6xl mx-auto px-4 py-8">
+    <!-- 標題 -->
+    <div class="mb-8">
+      <h1 class="text-2xl font-bold text-gray-800 mb-1">
+        <i class="fas fa-cog mr-2 text-blue-500"></i>管理員後台
+      </h1>
+      <p class="text-gray-500">管理平台作品、查看統計資料、批次刪除畢業生檔案</p>
+    </div>
+
+    <!-- 統計卡片 -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8" id="stats-cards">
+      <div class="stat-card">
+        <div class="stat-number" id="stat-total">-</div>
+        <p class="text-sm text-gray-500 mt-1">作品總數</p>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" id="stat-students">-</div>
+        <p class="text-sm text-gray-500 mt-1">學生人數</p>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" id="stat-pdf">-</div>
+        <p class="text-sm text-gray-500 mt-1">PDF 文件</p>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number" id="stat-video">-</div>
+        <p class="text-sm text-gray-500 mt-1">影片檔案</p>
+      </div>
+    </div>
+
+    <!-- 各年份統計 -->
+    <div class="mb-8">
+      <h2 class="text-lg font-bold text-gray-800 mb-4">
+        <i class="fas fa-chart-bar mr-1 text-gray-400"></i> 各入學年份統計
+      </h2>
+      <div id="year-stats" class="flex flex-col gap-3">
+        <div class="text-center py-8 text-gray-400">
+          <div class="spinner mb-3" style="margin:0 auto;"></div>
+          載入中...
+        </div>
+      </div>
+    </div>
+
+    <!-- 批次刪除區 -->
+    <div style="background:white; border-radius:16px; padding:24px; box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-bold text-gray-800">
+          <i class="fas fa-trash-alt mr-1 text-red-400"></i> 批次管理
+        </h2>
+        <div class="flex items-center gap-3">
+          <select id="year-select" class="form-input" style="width:auto; padding:8px 12px;"
+                  onchange="loadYearWorks()">
+            <option value="">-- 選擇入學年份 --</option>
+          </select>
+          <button class="btn-danger" id="batch-delete-btn" onclick="batchDelete()" style="display:none;">
+            <i class="fas fa-trash mr-1"></i> 刪除所選 (<span id="selected-count">0</span>)
+          </button>
+        </div>
+      </div>
+
+      <!-- 作品列表 -->
+      <div id="batch-table-container" style="display:none; overflow-x:auto;">
+        <div class="mb-3 flex items-center gap-3">
+          <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-600">
+            <input type="checkbox" id="select-all" onchange="toggleSelectAll(this.checked)">
+            全選
+          </label>
+        </div>
+        <table class="batch-table">
+          <thead>
+            <tr>
+              <th style="width:40px;"></th>
+              <th>學號</th>
+              <th>姓名</th>
+              <th>標題</th>
+              <th>類型</th>
+              <th>上傳日期</th>
+            </tr>
+          </thead>
+          <tbody id="batch-table-body">
+          </tbody>
+        </table>
+      </div>
+
+      <div id="batch-empty" class="text-center py-8 text-gray-400" style="display:none;">
+        <i class="fas fa-inbox text-3xl mb-2" style="display:block;"></i>
+        <p>該年份尚無作品</p>
+      </div>
+
+      <div id="batch-hint" class="text-center py-8 text-gray-400">
+        <i class="fas fa-hand-pointer text-3xl mb-2" style="display:block;"></i>
+        <p>請先選擇入學年份來查看作品</p>
+      </div>
+    </div>
+  </div>
+
+  <?!= include('app.js') ?>
+
+  <script>
+    var yearWorksMap = {};
+    var selectedIds = {};
+
+    function onUserLoaded(user) {
+      if (!user.isAdmin) {
+        showToast('您沒有管理員權限', 'error');
+        return;
+      }
+      loadStatistics();
+    }
+
+    function loadStatistics() {
+      callApi('getStatistics', {}, function(stats) {
+        // 統計卡片
+        document.getElementById('stat-total').textContent = stats.totalWorks;
+        document.getElementById('stat-students').textContent = stats.totalStudents;
+        document.getElementById('stat-pdf').textContent = stats.typeStats.pdf;
+        document.getElementById('stat-video').textContent = stats.typeStats.video;
+
+        // 年份統計
+        renderYearStats(stats.yearStats);
+
+        // 填入年份下拉選單
+        var select = document.getElementById('year-select');
+        stats.yearStats.forEach(function(stat) {
+          var opt = document.createElement('option');
+          opt.value = stat.year;
+          opt.textContent = '民國 ' + stat.year + ' 年入學' +
+            (stat.isGraduated ? ' (已畢業)' : ' (在學中)') +
+            ' - ' + stat.workCount + ' 件作品';
+          select.appendChild(opt);
+        });
+      });
+    }
+
+    function renderYearStats(yearStats) {
+      var container = document.getElementById('year-stats');
+      if (yearStats.length === 0) {
+        container.innerHTML = '<div class="text-center py-8 text-gray-400">尚無資料</div>';
+        return;
+      }
+
+      container.innerHTML = '';
+      yearStats.forEach(function(stat) {
+        var statusClass = stat.isGraduated ? 'graduated' : 'current';
+        var statusText = stat.isGraduated
+          ? '<span class="text-red-500 text-sm font-medium"><i class="fas fa-graduation-cap mr-1"></i>已畢業</span>'
+          : '<span class="text-green-500 text-sm font-medium"><i class="fas fa-book-reader mr-1"></i>在學中</span>';
+
+        container.innerHTML += '' +
+          '<div class="year-row ' + statusClass + '">' +
+            '<div class="flex items-center gap-4">' +
+              '<div>' +
+                '<span class="font-bold text-gray-800">民國 ' + stat.year + ' 年入學</span>' +
+                '<div class="mt-1">' + statusText + '</div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="flex items-center gap-6 text-sm">' +
+              '<div class="text-center">' +
+                '<div class="font-bold text-gray-800 text-lg">' + stat.studentCount + '</div>' +
+                '<div class="text-gray-400">位學生</div>' +
+              '</div>' +
+              '<div class="text-center">' +
+                '<div class="font-bold text-gray-800 text-lg">' + stat.workCount + '</div>' +
+                '<div class="text-gray-400">件作品</div>' +
+              '</div>' +
+              '<button class="btn-secondary text-xs" onclick="selectYear(' + stat.year + ')">' +
+                '<i class="fas fa-eye mr-1"></i> 查看' +
+              '</button>' +
+            '</div>' +
+          '</div>';
+      });
+    }
+
+    function selectYear(year) {
+      document.getElementById('year-select').value = year;
+      loadYearWorks();
+      // 捲動到批次管理區
+      document.getElementById('year-select').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function loadYearWorks() {
+      var year = parseInt(document.getElementById('year-select').value);
+      selectedIds = {};
+      updateSelectedCount();
+
+      if (!year) {
+        document.getElementById('batch-table-container').style.display = 'none';
+        document.getElementById('batch-empty').style.display = 'none';
+        document.getElementById('batch-hint').style.display = '';
+        return;
+      }
+
+      document.getElementById('batch-hint').style.display = 'none';
+      showLoading('載入作品列表...');
+
+      callApi('getWorksByYear', { year: year }, function(works) {
+        hideLoading();
+        yearWorksMap[year] = works;
+
+        if (works.length === 0) {
+          document.getElementById('batch-table-container').style.display = 'none';
+          document.getElementById('batch-empty').style.display = '';
+          return;
+        }
+
+        document.getElementById('batch-empty').style.display = 'none';
+        document.getElementById('batch-table-container').style.display = '';
+        document.getElementById('select-all').checked = false;
+
+        var tbody = document.getElementById('batch-table-body');
+        tbody.innerHTML = '';
+
+        works.forEach(function(work) {
+          tbody.innerHTML += '' +
+            '<tr>' +
+              '<td><input type="checkbox" value="' + work.id + '" onchange="toggleSelect(\'' + work.id + '\', this.checked)"></td>' +
+              '<td>' + escapeHtml(work.studentId) + '</td>' +
+              '<td>' + escapeHtml(work.studentName || '-') + '</td>' +
+              '<td><a href="' + getBaseUrl() + '?page=viewer&id=' + work.id + '" target="_blank" style="color:#2d5f8a;">' + escapeHtml(truncate(work.title, 30)) + '</a></td>' +
+              '<td>' + getFileTypeBadge(work.fileType) + '</td>' +
+              '<td class="text-gray-500 text-sm">' + formatDate(work.createdAt) + '</td>' +
+            '</tr>';
+        });
+      }, function(err) {
+        hideLoading();
+        showToast('載入失敗: ' + err, 'error');
+      });
+    }
+
+    function toggleSelect(id, checked) {
+      if (checked) {
+        selectedIds[id] = true;
+      } else {
+        delete selectedIds[id];
+      }
+      updateSelectedCount();
+    }
+
+    function toggleSelectAll(checked) {
+      var checkboxes = document.querySelectorAll('#batch-table-body input[type="checkbox"]');
+      checkboxes.forEach(function(cb) {
+        cb.checked = checked;
+        toggleSelect(cb.value, checked);
+      });
+    }
+
+    function updateSelectedCount() {
+      var count = Object.keys(selectedIds).length;
+      document.getElementById('selected-count').textContent = count;
+      document.getElementById('batch-delete-btn').style.display = count > 0 ? '' : 'none';
+    }
+
+    function batchDelete() {
+      var ids = Object.keys(selectedIds);
+      if (ids.length === 0) return;
+
+      showConfirm(
+        '批次刪除確認',
+        '確定要刪除所選的 ' + ids.length + ' 件作品嗎？此操作會同時刪除 Google Drive 上的檔案，且無法復原。',
+        function() {
+          showLoading('批次刪除中... 請稍候');
+          callApi('batchDelete', { workIds: ids }, function(result) {
+            hideLoading();
+            showToast('成功刪除 ' + result.deletedCount + ' 件作品', 'success');
+
+            if (result.errors && result.errors.length > 0) {
+              showToast('部分檔案刪除失敗: ' + result.errors.join(', '), 'error');
+            }
+
+            // 重新載入
+            selectedIds = {};
+            updateSelectedCount();
+            loadYearWorks();
+            loadStatistics();
+          }, function(err) {
+            hideLoading();
+            showToast('批次刪除失敗: ' + err, 'error');
+          });
+        }
+      );
+    }
+  </script>
+</body>
+</html>
