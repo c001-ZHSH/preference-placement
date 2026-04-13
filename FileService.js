@@ -104,3 +104,33 @@ function getFileBase64(fileId) {
 function getVideoStreamUrl(fileId) {
   return 'https://drive.google.com/file/d/' + fileId + '/preview';
 }
+
+/**
+ * 取得檔案縮圖的 Base64 Data URL（含快取）
+ * Google Drive 會自動為影片和 PDF 生成縮圖
+ */
+function getFileThumbnailBase64(fileId) {
+  if (!fileId) return null;
+
+  // 先查快取（縮圖快取 1 小時）
+  var cache = CacheService.getScriptCache();
+  var cacheKey = 'thumb_' + fileId;
+  var cached = cache.get(cacheKey);
+  if (cached) return cached;
+
+  try {
+    var file = DriveApp.getFileById(fileId);
+    var thumb = file.getThumbnail();
+    if (thumb) {
+      var dataUrl = 'data:' + thumb.getContentType() + ';base64,' + Utilities.base64Encode(thumb.getBytes());
+      // 快取 1 小時（CacheService 上限 6 小時），但單一值上限 100KB
+      if (dataUrl.length < 90000) {
+        cache.put(cacheKey, dataUrl, 3600);
+      }
+      return dataUrl;
+    }
+  } catch (e) {
+    Logger.log('取得縮圖失敗: ' + fileId + ' - ' + e.message);
+  }
+  return null;
+}

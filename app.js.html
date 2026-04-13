@@ -177,11 +177,38 @@ function createWorkCard(work) {
   var likeCount = work.likeCount || 0;
   var likedClass = work.liked ? 'color:#e53e3e;' : '';
 
-  return '' +
-    '<div class="work-card" onclick="window.top.location.href=\'' + baseUrl + '?page=viewer&id=' + work.id + '\'">' +
+  // 縮圖 HTML
+  var thumbnailHtml = '';
+  var thumbId = 'thumb-' + work.id;
+
+  if (work.driveFileId && work.fileType === 'pdf') {
+    // PDF：直接用 Drive 縮圖 URL（通常可用）
+    var thumbUrl = 'https://drive.google.com/thumbnail?id=' + work.driveFileId + '&sz=w400';
+    thumbnailHtml =
+      '<div class="thumbnail ' + thumbClass + '" style="position:relative;">' +
+        '<img src="' + thumbUrl + '" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';">' +
+        '<div style="display:none;width:100%;height:100%;align-items:center;justify-content:center;position:absolute;inset:0;">' +
+          '<i class="fas ' + thumbIcon + '"></i>' +
+        '</div>' +
+      '</div>';
+  } else if (work.driveFileId && work.fileType === 'video') {
+    // 影片：先顯示預設圖示，再透過 API 載入縮圖
+    thumbnailHtml =
+      '<div class="thumbnail ' + thumbClass + '" id="' + thumbId + '" style="position:relative;">' +
+        '<i class="fas fa-play-circle"></i>' +
+      '</div>';
+  } else {
+    thumbnailHtml =
       '<div class="thumbnail ' + thumbClass + '">' +
         '<i class="fas ' + thumbIcon + '"></i>' +
-      '</div>' +
+      '</div>';
+  }
+
+  var viewUrl = baseUrl + '?page=viewer&id=' + work.id;
+
+  return '' +
+    '<a class="work-card" href="' + viewUrl + '" target="_top" style="text-decoration:none; color:inherit; display:block;">' +
+      thumbnailHtml +
       '<div class="p-4">' +
         '<div class="flex items-center justify-between mb-2">' +
           getFileTypeBadge(work.fileType) +
@@ -200,7 +227,7 @@ function createWorkCard(work) {
           '</div>' +
         '</div>' +
       '</div>' +
-    '</div>';
+    '</a>';
 }
 
 /**
@@ -248,5 +275,28 @@ function fileToBase64(file, callback) {
     callback(base64);
   };
   reader.readAsDataURL(file);
+}
+
+/**
+ * 載入影片縮圖（在卡片渲染後呼叫）
+ */
+function loadVideoThumbnails(works) {
+  works.forEach(function(work) {
+    if (work.fileType === 'video' && work.driveFileId) {
+      var thumbId = 'thumb-' + work.id;
+      callApi('getThumbnail', { fileId: work.driveFileId }, function(dataUrl) {
+        if (dataUrl) {
+          var el = document.getElementById(thumbId);
+          if (el) {
+            el.innerHTML =
+              '<img src="' + dataUrl + '" style="width:100%;height:100%;object-fit:cover;">' +
+              '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">' +
+                '<i class="fas fa-play-circle" style="font-size:3rem;color:white;opacity:0.85;text-shadow:0 2px 8px rgba(0,0,0,0.5);"></i>' +
+              '</div>';
+          }
+        }
+      });
+    }
+  });
 }
 </script>

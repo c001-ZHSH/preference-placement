@@ -121,21 +121,23 @@
         var thumbIcon = work.fileType === 'pdf' ? 'fa-file-pdf' : 'fa-video';
         var baseUrl = getBaseUrl();
 
+        var viewUrl = baseUrl + '?page=viewer&id=' + work.id;
+
         var html = '' +
           '<div class="my-work-item" id="work-item-' + work.id + '">' +
-            '<div class="my-work-thumb ' + thumbClass + '" onclick="window.top.location.href=\'' + baseUrl + '?page=viewer&id=' + work.id + '\'" style="cursor:pointer;">' +
+            '<a href="' + viewUrl + '" target="_top" class="my-work-thumb ' + thumbClass + '" style="cursor:pointer; text-decoration:none;">' +
               '<i class="fas ' + thumbIcon + '"></i>' +
-            '</div>' +
+            '</a>' +
             '<div class="flex-1">' +
               '<div class="flex items-start justify-between">' +
-                '<div class="flex-1 cursor-pointer" onclick="window.top.location.href=\'' + baseUrl + '?page=viewer&id=' + work.id + '\'">' +
+                '<a href="' + viewUrl + '" target="_top" class="flex-1" style="text-decoration:none; color:inherit;">' +
                   '<h3 class="font-bold text-gray-800">' + escapeHtml(work.title) + '</h3>' +
                   '<p class="text-sm text-gray-500 mt-1">' + escapeHtml(truncate(work.description, 80)) + '</p>' +
                   '<div class="flex items-center gap-3 mt-2">' +
                     getFileTypeBadge(work.fileType) +
                     '<span class="text-xs text-gray-400">' + formatDate(work.createdAt) + '</span>' +
                   '</div>' +
-                '</div>' +
+                '</a>' +
                 '<div class="flex gap-2 ml-4 flex-shrink-0">' +
                   '<button class="text-gray-400 hover:text-blue-500 p-1" onclick="toggleEdit(\'' + work.id + '\')" title="編輯">' +
                     '<i class="fas fa-pen"></i>' +
@@ -154,6 +156,11 @@
                 '<div class="mb-3">' +
                   '<label class="block text-sm font-medium text-gray-700 mb-1">說明</label>' +
                   '<textarea class="form-input" rows="3" id="edit-desc-' + work.id + '">' + escapeHtml(work.description) + '</textarea>' +
+                '</div>' +
+                '<div class="mb-3">' +
+                  '<label class="block text-sm font-medium text-gray-700 mb-1">替換檔案（選填）</label>' +
+                  '<input type="file" class="form-input" id="edit-file-' + work.id + '" accept=".pdf,.mp4,.mov,.webm,.avi" style="padding:8px;">' +
+                  '<p class="text-xs text-gray-400 mt-1">不選擇則保留原檔案</p>' +
                 '</div>' +
                 '<div class="flex gap-2 justify-end">' +
                   '<button class="btn-secondary" onclick="toggleEdit(\'' + work.id + '\')">取消</button>' +
@@ -175,25 +182,65 @@
     function saveEdit(workId) {
       var title = document.getElementById('edit-title-' + workId).value.trim();
       var description = document.getElementById('edit-desc-' + workId).value.trim();
+      var fileInput = document.getElementById('edit-file-' + workId);
+      var newFile = fileInput && fileInput.files && fileInput.files[0];
 
       if (!title) {
         showToast('標題不能為空', 'error');
         return;
       }
 
-      showLoading('儲存中...');
-      callApi('updateWork', {
-        id: workId,
-        title: title,
-        description: description
-      }, function() {
-        hideLoading();
-        showToast('更新成功！', 'success');
-        loadMyWorks(); // 重新載入
-      }, function(err) {
-        hideLoading();
-        showToast('更新失敗: ' + err, 'error');
-      });
+      if (newFile) {
+        // 有選擇新檔案 → 先上傳新檔案，再更新記錄
+        var maxSize = 50 * 1024 * 1024;
+        if (newFile.size > maxSize) {
+          showToast('檔案大小超過 50MB 限制', 'error');
+          return;
+        }
+
+        showLoading('上傳新檔案中...');
+        fileToBase64(newFile, function(base64) {
+          callApi('uploadFile', {
+            base64: base64,
+            fileName: newFile.name,
+            mimeType: newFile.type
+          }, function(fileResult) {
+            var fileType = newFile.type === 'application/pdf' ? 'pdf' : 'video';
+            callApi('updateWork', {
+              id: workId,
+              title: title,
+              description: description,
+              driveFileId: fileResult.fileId,
+              fileType: fileType
+            }, function() {
+              hideLoading();
+              showToast('更新成功（含新檔案）！', 'success');
+              loadMyWorks();
+            }, function(err) {
+              hideLoading();
+              showToast('更新失敗: ' + err, 'error');
+            });
+          }, function(err) {
+            hideLoading();
+            showToast('檔案上傳失敗: ' + err, 'error');
+          });
+        });
+      } else {
+        // 沒有新檔案 → 只更新標題和說明
+        showLoading('儲存中...');
+        callApi('updateWork', {
+          id: workId,
+          title: title,
+          description: description
+        }, function() {
+          hideLoading();
+          showToast('更新成功！', 'success');
+          loadMyWorks();
+        }, function(err) {
+          hideLoading();
+          showToast('更新失敗: ' + err, 'error');
+        });
+      }
     }
 
     function confirmDelete(workId, title) {

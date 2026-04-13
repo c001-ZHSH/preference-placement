@@ -153,6 +153,8 @@ function handleApiRequest(action, params) {
       // 檔案相關
       case 'uploadFile':
         return { success: true, data: uploadFileFromBase64(params.base64, params.fileName, params.mimeType) };
+      case 'getThumbnail':
+        return { success: true, data: getFileThumbnailBase64(params.fileId) };
 
       // 使用者資訊
       case 'getCurrentUser':
