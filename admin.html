@@ -5,163 +5,135 @@
   <?!= include('styles') ?>
   <style>
     .stat-card {
-      background: white;
-      border-radius: 16px;
-      padding: 24px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-      text-align: center;
+      background: white; border-radius: 16px; padding: 24px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08); text-align: center;
     }
-
     .stat-card .stat-number {
-      font-size: 2rem;
-      font-weight: 700;
+      font-size: 2rem; font-weight: 700;
       background: linear-gradient(135deg, #1e3a5f, #667eea);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     }
-
     .year-row {
-      background: white;
-      border-radius: 12px;
-      padding: 16px 20px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      box-shadow: 0 1px 6px rgba(0,0,0,0.06);
-      transition: all 0.2s;
+      background: white; border-radius: 12px; padding: 16px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.06); transition: all 0.2s;
     }
-
-    .year-row:hover {
-      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    }
-
-    .year-row.graduated {
-      border-left: 4px solid #e53e3e;
-    }
-
-    .year-row.current {
-      border-left: 4px solid #38a169;
-    }
-
+    .year-row:hover { box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+    .year-row.graduated { border-left: 4px solid #e53e3e; }
+    .year-row.current { border-left: 4px solid #38a169; }
     .cat-item {
       background: white; border-radius: 12px; padding: 14px 18px;
       display: flex; align-items: center; justify-content: space-between;
       box-shadow: 0 1px 6px rgba(0,0,0,0.06); transition: all 0.2s;
     }
     .cat-item:hover { box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-
-    .batch-table {
-      width: 100%;
-      border-collapse: separate;
-      border-spacing: 0;
-    }
-
-    .batch-table th {
-      background: #f7fafc;
-      padding: 12px 16px;
-      text-align: left;
-      font-weight: 600;
-      font-size: 0.85rem;
-      color: #4a5568;
-      border-bottom: 2px solid #e2e8f0;
-    }
-
-    .batch-table td {
-      padding: 12px 16px;
-      border-bottom: 1px solid #f0f0f0;
-      font-size: 0.9rem;
-    }
-
-    .batch-table tr:hover td {
-      background: #f7fafc;
-    }
-
-    .batch-table input[type="checkbox"] {
-      width: 18px;
-      height: 18px;
-      accent-color: #2d5f8a;
-    }
+    .batch-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+    .batch-table th { background: #f7fafc; padding: 12px 16px; text-align: left; font-weight: 600; font-size: 0.85rem; color: #4a5568; border-bottom: 2px solid #e2e8f0; }
+    .batch-table td { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; font-size: 0.9rem; }
+    .batch-table tr:hover td { background: #f7fafc; }
+    .batch-table input[type="checkbox"] { width: 18px; height: 18px; accent-color: #2d5f8a; }
+    .collapsible-header { cursor: pointer; user-select: none; }
+    .collapsible-header:hover { opacity: 0.8; }
+    .collapsible-body { overflow: hidden; transition: max-height 0.3s ease; }
+    .collapsible-body.collapsed { max-height: 0 !important; padding-top: 0; padding-bottom: 0; }
+    .admin-section { background: white; border-radius: 16px; padding: 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); margin-bottom: 24px; }
   </style>
 </head>
 <body>
   <?!= include('components') ?>
 
   <div class="max-w-6xl mx-auto px-4 py-8">
-    <!-- 標題 -->
     <div class="mb-8">
       <h1 class="text-2xl font-bold text-gray-800 mb-1">
         <i class="fas fa-cog mr-2 text-blue-500"></i>管理員後台
       </h1>
-      <p class="text-gray-500">管理平台作品、查看統計資料、批次刪除畢業生檔案</p>
+      <p class="text-gray-500">管理平台作品、查看統計資料、搜尋與刪除作品</p>
     </div>
 
     <!-- 統計卡片 -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8" id="stats-cards">
-      <div class="stat-card">
-        <div class="stat-number" id="stat-total">-</div>
-        <p class="text-sm text-gray-500 mt-1">作品總數</p>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div class="stat-card"><div class="stat-number" id="stat-total">-</div><p class="text-sm text-gray-500 mt-1">作品總數</p></div>
+      <div class="stat-card"><div class="stat-number" id="stat-students">-</div><p class="text-sm text-gray-500 mt-1">學生人數</p></div>
+      <div class="stat-card"><div class="stat-number" id="stat-pdf">-</div><p class="text-sm text-gray-500 mt-1">PDF 文件</p></div>
+      <div class="stat-card"><div class="stat-number" id="stat-video">-</div><p class="text-sm text-gray-500 mt-1">影片檔案</p></div>
+    </div>
+
+    <!-- ==================== 搜尋與管理 ==================== -->
+    <div class="admin-section">
+      <h2 class="text-lg font-bold text-gray-800 mb-4">
+        <i class="fas fa-search mr-1 text-blue-400"></i> 搜尋作品
+      </h2>
+      <div class="flex flex-col sm:flex-row gap-3 mb-4">
+        <div class="search-bar flex-1">
+          <i class="fas fa-search text-gray-400"></i>
+          <input type="text" id="admin-search" placeholder="搜尋作品標題、學號、姓名或類別..." onkeyup="handleAdminSearch(event)">
+        </div>
+        <button class="btn-primary" onclick="doAdminSearch()" style="padding:8px 20px;">
+          <i class="fas fa-search"></i> 搜尋
+        </button>
       </div>
-      <div class="stat-card">
-        <div class="stat-number" id="stat-students">-</div>
-        <p class="text-sm text-gray-500 mt-1">學生人數</p>
+
+      <!-- 搜尋結果 -->
+      <div id="search-result-area" style="display:none;">
+        <div class="flex items-center justify-between mb-3">
+          <p class="text-sm text-gray-500">找到 <strong id="search-result-count">0</strong> 筆結果</p>
+          <div class="flex gap-2">
+            <button class="btn-danger" id="search-delete-btn" onclick="deleteSearchSelected()" style="display:none; padding:6px 14px; font-size:0.85rem;">
+              <i class="fas fa-trash mr-1"></i> 刪除所選 (<span id="search-selected-count">0</span>)
+            </button>
+            <button class="btn-secondary" onclick="clearAdminSearch()" style="padding:6px 14px; font-size:0.85rem;">
+              <i class="fas fa-times mr-1"></i> 清除搜尋
+            </button>
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+          <div class="mb-2">
+            <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-600">
+              <input type="checkbox" id="search-select-all" onchange="toggleSearchSelectAll(this.checked)"> 全選
+            </label>
+          </div>
+          <table class="batch-table">
+            <thead>
+              <tr>
+                <th style="width:40px;"></th>
+                <th>學號</th>
+                <th>姓名</th>
+                <th>標題</th>
+                <th>類別</th>
+                <th>類型</th>
+                <th>上傳日期</th>
+              </tr>
+            </thead>
+            <tbody id="search-table-body"></tbody>
+          </table>
+        </div>
       </div>
-      <div class="stat-card">
-        <div class="stat-number" id="stat-pdf">-</div>
-        <p class="text-sm text-gray-500 mt-1">PDF 文件</p>
-      </div>
-      <div class="stat-card">
-        <div class="stat-number" id="stat-video">-</div>
-        <p class="text-sm text-gray-500 mt-1">影片檔案</p>
+      <div id="search-empty" style="display:none;" class="text-center py-6 text-gray-400">
+        <i class="fas fa-search text-2xl mb-2" style="display:block;"></i>
+        <p>找不到符合的作品</p>
       </div>
     </div>
 
-    <!-- 各年份統計 -->
-    <div class="mb-8">
+    <!-- ==================== 各年份統計 ==================== -->
+    <div class="admin-section">
       <h2 class="text-lg font-bold text-gray-800 mb-4">
         <i class="fas fa-chart-bar mr-1 text-gray-400"></i> 各入學年份統計
       </h2>
       <div id="year-stats" class="flex flex-col gap-3">
         <div class="text-center py-8 text-gray-400">
-          <div class="spinner mb-3" style="margin:0 auto;"></div>
-          載入中...
+          <div class="spinner mb-3" style="margin:0 auto;"></div>載入中...
         </div>
       </div>
     </div>
 
-    <!-- 類別管理 -->
-    <div style="background:white; border-radius:16px; padding:24px; box-shadow:0 2px 12px rgba(0,0,0,0.08);" class="mb-8">
+    <!-- ==================== 批次管理（依年份） ==================== -->
+    <div class="admin-section">
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-lg font-bold text-gray-800">
-          <i class="fas fa-tags mr-1 text-blue-400"></i> 成果類別管理
-        </h2>
-        <button class="btn-primary" onclick="showAddCategory()" style="padding:8px 16px; font-size:0.85rem;">
-          <i class="fas fa-plus"></i> 新增類別
-        </button>
-      </div>
-
-      <!-- 新增類別表單 -->
-      <div id="add-cat-form" style="display:none; margin-bottom:16px;">
-        <div class="flex gap-2">
-          <input type="text" class="form-input" id="new-cat-name" placeholder="輸入新類別名稱" style="flex:1;">
-          <button class="btn-primary" onclick="doAddCategory()" style="padding:8px 16px;">新增</button>
-          <button class="btn-secondary" onclick="document.getElementById('add-cat-form').style.display='none'" style="padding:8px 16px;">取消</button>
-        </div>
-      </div>
-
-      <div id="categories-list" class="flex flex-col gap-2">
-        <div class="text-center py-4 text-gray-400">載入中...</div>
-      </div>
-    </div>
-
-    <!-- 批次刪除區 -->
-    <div style="background:white; border-radius:16px; padding:24px; box-shadow:0 2px 12px rgba(0,0,0,0.08);">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-bold text-gray-800">
-          <i class="fas fa-trash-alt mr-1 text-red-400"></i> 批次管理
+          <i class="fas fa-trash-alt mr-1 text-red-400"></i> 依年份批次管理
         </h2>
         <div class="flex items-center gap-3">
-          <select id="year-select" class="form-input" style="width:auto; padding:8px 12px;"
-                  onchange="loadYearWorks()">
+          <select id="year-select" class="form-input" style="width:auto; padding:8px 12px;" onchange="loadYearWorks()">
             <option value="">-- 選擇入學年份 --</option>
           </select>
           <button class="btn-danger" id="batch-delete-btn" onclick="batchDelete()" style="display:none;">
@@ -169,41 +141,42 @@
           </button>
         </div>
       </div>
-
-      <!-- 作品列表 -->
       <div id="batch-table-container" style="display:none; overflow-x:auto;">
-        <div class="mb-3 flex items-center gap-3">
-          <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-600">
-            <input type="checkbox" id="select-all" onchange="toggleSelectAll(this.checked)">
-            全選
-          </label>
-        </div>
+        <div class="mb-3"><label class="flex items-center gap-2 cursor-pointer text-sm text-gray-600"><input type="checkbox" id="select-all" onchange="toggleSelectAll(this.checked)"> 全選</label></div>
         <table class="batch-table">
-          <thead>
-            <tr>
-              <th style="width:40px;"></th>
-              <th>學號</th>
-              <th>姓名</th>
-              <th>標題</th>
-              <th>類型</th>
-              <th>上傳日期</th>
-            </tr>
-          </thead>
-          <tbody id="batch-table-body">
-          </tbody>
+          <thead><tr><th style="width:40px;"></th><th>學號</th><th>姓名</th><th>標題</th><th>類別</th><th>類型</th><th>上傳日期</th></tr></thead>
+          <tbody id="batch-table-body"></tbody>
         </table>
       </div>
+      <div id="batch-empty" class="text-center py-8 text-gray-400" style="display:none;"><i class="fas fa-inbox text-3xl mb-2" style="display:block;"></i><p>該年份尚無作品</p></div>
+      <div id="batch-hint" class="text-center py-8 text-gray-400"><i class="fas fa-hand-pointer text-3xl mb-2" style="display:block;"></i><p>請先選擇入學年份來查看作品</p></div>
+    </div>
 
-      <div id="batch-empty" class="text-center py-8 text-gray-400" style="display:none;">
-        <i class="fas fa-inbox text-3xl mb-2" style="display:block;"></i>
-        <p>該年份尚無作品</p>
+    <!-- ==================== 類別管理（可收折） ==================== -->
+    <div class="admin-section">
+      <div class="collapsible-header flex items-center justify-between" onclick="toggleCollapse('cat-body', 'cat-arrow')">
+        <h2 class="text-lg font-bold text-gray-800">
+          <i class="fas fa-tags mr-1 text-blue-400"></i> 成果類別管理
+        </h2>
+        <i class="fas fa-chevron-down text-gray-400 transition" id="cat-arrow" style="transition:transform 0.3s;"></i>
       </div>
-
-      <div id="batch-hint" class="text-center py-8 text-gray-400">
-        <i class="fas fa-hand-pointer text-3xl mb-2" style="display:block;"></i>
-        <p>請先選擇入學年份來查看作品</p>
+      <div class="collapsible-body collapsed" id="cat-body" style="max-height:0;">
+        <div class="flex justify-end mt-4 mb-3">
+          <button class="btn-primary" onclick="showAddCategory()" style="padding:8px 16px; font-size:0.85rem;"><i class="fas fa-plus"></i> 新增類別</button>
+        </div>
+        <div id="add-cat-form" style="display:none; margin-bottom:16px;">
+          <div class="flex gap-2">
+            <input type="text" class="form-input" id="new-cat-name" placeholder="輸入新類別名稱" style="flex:1;">
+            <button class="btn-primary" onclick="doAddCategory()" style="padding:8px 16px;">新增</button>
+            <button class="btn-secondary" onclick="document.getElementById('add-cat-form').style.display='none'" style="padding:8px 16px;">取消</button>
+          </div>
+        </div>
+        <div id="categories-list" class="flex flex-col gap-2">
+          <div class="text-center py-4 text-gray-400">載入中...</div>
+        </div>
       </div>
     </div>
+
   </div>
 
   <?!= include('app.js') ?>
@@ -211,14 +184,128 @@
   <script>
     var yearWorksMap = {};
     var selectedIds = {};
+    var searchSelectedIds = {};
 
     function onUserLoaded(user) {
-      if (!user.isAdmin) {
-        showToast('您沒有管理員權限', 'error');
-        return;
-      }
+      if (!user.isAdmin) { showToast('您沒有管理員權限', 'error'); return; }
       loadStatistics();
       loadCategories();
+    }
+
+    // ============================
+    // 收折功能
+    // ============================
+    function toggleCollapse(bodyId, arrowId) {
+      var body = document.getElementById(bodyId);
+      var arrow = document.getElementById(arrowId);
+      if (body.classList.contains('collapsed')) {
+        body.classList.remove('collapsed');
+        body.style.maxHeight = body.scrollHeight + 'px';
+        arrow.style.transform = 'rotate(180deg)';
+      } else {
+        body.style.maxHeight = '0';
+        body.classList.add('collapsed');
+        arrow.style.transform = 'rotate(0deg)';
+      }
+    }
+
+    // ============================
+    // 搜尋功能
+    // ============================
+    var searchTimer = null;
+
+    function handleAdminSearch(event) {
+      clearTimeout(searchTimer);
+      if (event.key === 'Enter') { doAdminSearch(); return; }
+      searchTimer = setTimeout(function() { doAdminSearch(); }, 500);
+    }
+
+    function doAdminSearch() {
+      var query = document.getElementById('admin-search').value.trim().toLowerCase();
+      if (!query) {
+        document.getElementById('search-result-area').style.display = 'none';
+        document.getElementById('search-empty').style.display = 'none';
+        return;
+      }
+
+      showLoading('搜尋中...');
+      callApi('searchWorks', { query: query }, function(works) {
+        hideLoading();
+        searchSelectedIds = {};
+        updateSearchSelectedCount();
+        document.getElementById('search-select-all').checked = false;
+
+        if (works.length === 0) {
+          document.getElementById('search-result-area').style.display = 'none';
+          document.getElementById('search-empty').style.display = '';
+          return;
+        }
+
+        document.getElementById('search-empty').style.display = 'none';
+        document.getElementById('search-result-area').style.display = '';
+        document.getElementById('search-result-count').textContent = works.length;
+
+        var tbody = document.getElementById('search-table-body');
+        tbody.innerHTML = '';
+        works.forEach(function(work) {
+          tbody.innerHTML += '' +
+            '<tr>' +
+              '<td><input type="checkbox" value="' + work.id + '" onchange="toggleSearchSelect(\'' + work.id + '\', this.checked)"></td>' +
+              '<td>' + escapeHtml(work.studentId) + '</td>' +
+              '<td>' + escapeHtml(work.studentName || '-') + '</td>' +
+              '<td><a href="' + getBaseUrl() + '?page=viewer&id=' + work.id + '" target="_blank" style="color:#2d5f8a;">' + escapeHtml(truncate(work.title, 30)) + '</a></td>' +
+              '<td class="text-xs">' + escapeHtml(work.category || '-') + '</td>' +
+              '<td>' + getFileTypeBadge(work.fileType) + '</td>' +
+              '<td class="text-gray-500 text-sm">' + formatDate(work.createdAt) + '</td>' +
+            '</tr>';
+        });
+      }, function(err) {
+        hideLoading();
+        alert('搜尋失敗: ' + err);
+      });
+    }
+
+    function clearAdminSearch() {
+      document.getElementById('admin-search').value = '';
+      document.getElementById('search-result-area').style.display = 'none';
+      document.getElementById('search-empty').style.display = 'none';
+      searchSelectedIds = {};
+    }
+
+    function toggleSearchSelect(id, checked) {
+      if (checked) { searchSelectedIds[id] = true; } else { delete searchSelectedIds[id]; }
+      updateSearchSelectedCount();
+    }
+
+    function toggleSearchSelectAll(checked) {
+      document.querySelectorAll('#search-table-body input[type="checkbox"]').forEach(function(cb) {
+        cb.checked = checked;
+        toggleSearchSelect(cb.value, checked);
+      });
+    }
+
+    function updateSearchSelectedCount() {
+      var count = Object.keys(searchSelectedIds).length;
+      document.getElementById('search-selected-count').textContent = count;
+      document.getElementById('search-delete-btn').style.display = count > 0 ? '' : 'none';
+    }
+
+    function deleteSearchSelected() {
+      var ids = Object.keys(searchSelectedIds);
+      if (ids.length === 0) return;
+      if (!confirm('確定要刪除所選的 ' + ids.length + ' 件作品嗎？\n此操作無法復原。')) return;
+
+      showLoading('刪除中...');
+      callApi('batchDelete', { workIds: ids }, function(result) {
+        hideLoading();
+        alert('成功刪除 ' + result.deletedCount + ' 件作品');
+        searchSelectedIds = {};
+        doAdminSearch(); // 重新搜尋
+        loadStatistics();
+      }, function(err) {
+        hideLoading();
+        alert('刪除失敗: ' + err);
+      });
     }
 
     // ============================
@@ -235,34 +322,29 @@
 
     function renderCategories(cats) {
       var container = document.getElementById('categories-list');
-      if (cats.length === 0) {
-        container.innerHTML = '<div class="text-center py-4 text-gray-400">尚無類別，請新增</div>';
-        return;
-      }
+      if (cats.length === 0) { container.innerHTML = '<div class="text-center py-4 text-gray-400">尚無類別，請新增</div>'; return; }
       container.innerHTML = '';
       cats.forEach(function(cat) {
-        container.innerHTML += '' +
-          '<div class="cat-item" id="cat-' + cat.id + '">' +
-            '<div class="flex items-center gap-2">' +
-              '<i class="fas fa-tag text-blue-400"></i>' +
-              '<span class="font-medium text-gray-800" id="cat-name-' + cat.id + '">' + escapeHtml(cat.name) + '</span>' +
-            '</div>' +
+        container.innerHTML +=
+          '<div class="cat-item">' +
+            '<div class="flex items-center gap-2"><i class="fas fa-tag text-blue-400"></i><span class="font-medium text-gray-800">' + escapeHtml(cat.name) + '</span></div>' +
             '<div class="flex gap-2">' +
-              '<button class="text-gray-400 hover:text-blue-500 p-1" onclick="editCategory(\'' + cat.id + '\', \'' + escapeHtml(cat.name).replace(/'/g, "\\'") + '\')" title="編輯名稱">' +
-                '<i class="fas fa-pen text-sm"></i>' +
-              '</button>' +
-              '<button class="text-gray-400 hover:text-red-500 p-1" onclick="deleteCategoryPrompt(\'' + cat.id + '\', \'' + escapeHtml(cat.name).replace(/'/g, "\\'") + '\')" title="刪除類別">' +
-                '<i class="fas fa-trash text-sm"></i>' +
-              '</button>' +
+              '<button class="text-gray-400 hover:text-blue-500 p-1" onclick="editCategory(\'' + cat.id + '\', \'' + escapeHtml(cat.name).replace(/'/g, "\\'") + '\')" title="編輯"><i class="fas fa-pen text-sm"></i></button>' +
+              '<button class="text-gray-400 hover:text-red-500 p-1" onclick="deleteCategoryPrompt(\'' + cat.id + '\', \'' + escapeHtml(cat.name).replace(/'/g, "\\'") + '\')" title="刪除"><i class="fas fa-trash text-sm"></i></button>' +
             '</div>' +
           '</div>';
       });
+      // 更新收折區高度
+      var body = document.getElementById('cat-body');
+      if (!body.classList.contains('collapsed')) { body.style.maxHeight = body.scrollHeight + 'px'; }
     }
 
     function showAddCategory() {
       document.getElementById('add-cat-form').style.display = '';
       document.getElementById('new-cat-name').value = '';
       document.getElementById('new-cat-name').focus();
+      var body = document.getElementById('cat-body');
+      if (!body.classList.contains('collapsed')) { body.style.maxHeight = body.scrollHeight + 100 + 'px'; }
     }
 
     function doAddCategory() {
@@ -270,14 +352,9 @@
       if (!name) { alert('請輸入類別名稱'); return; }
       showLoading('新增類別中...');
       callApi('addCategory', { name: name }, function() {
-        hideLoading();
-        document.getElementById('add-cat-form').style.display = 'none';
-        showToast('類別已新增', 'success');
-        loadCategories();
-      }, function(err) {
-        hideLoading();
-        alert('新增失敗: ' + err);
-      });
+        hideLoading(); document.getElementById('add-cat-form').style.display = 'none';
+        showToast('類別已新增', 'success'); loadCategories();
+      }, function(err) { hideLoading(); alert('新增失敗: ' + err); });
     }
 
     function editCategory(catId, oldName) {
@@ -285,69 +362,41 @@
       if (!newName || newName.trim() === '' || newName.trim() === oldName) return;
       showLoading('修改類別中...');
       callApi('updateCategory', { categoryId: catId, newName: newName.trim() }, function() {
-        hideLoading();
-        showToast('類別已修改，所有對應作品已同步更新', 'success');
-        loadCategories();
-      }, function(err) {
-        hideLoading();
-        alert('修改失敗: ' + err);
-      });
+        hideLoading(); showToast('類別已修改，所有對應作品已同步更新', 'success'); loadCategories();
+      }, function(err) { hideLoading(); alert('修改失敗: ' + err); });
     }
 
     function deleteCategoryPrompt(catId, catName) {
-      if (categoriesList.length <= 1) {
-        alert('至少需要保留一個類別');
-        return;
-      }
-      // 讓管理者選擇替代類別
+      if (categoriesList.length <= 1) { alert('至少需要保留一個類別'); return; }
       var options = [];
-      categoriesList.forEach(function(c) {
-        if (c.id !== catId) options.push(c.name);
-      });
-      var replacement = prompt(
-        '刪除類別「' + catName + '」\n\n' +
-        '該類別下的作品將移到哪個類別？\n' +
-        '可選擇：' + options.join('、') + '\n\n' +
-        '請輸入替代類別名稱：',
-        options[0]
-      );
+      categoriesList.forEach(function(c) { if (c.id !== catId) options.push(c.name); });
+      var replacement = prompt('刪除類別「' + catName + '」\n\n該類別下的作品將移到哪個類別？\n可選擇：' + options.join('、') + '\n\n請輸入替代類別名稱：', options[0]);
       if (!replacement) return;
-      if (options.indexOf(replacement) === -1) {
-        alert('請輸入正確的替代類別名稱');
-        return;
-      }
+      if (options.indexOf(replacement) === -1) { alert('請輸入正確的替代類別名稱'); return; }
       if (!confirm('確定要刪除類別「' + catName + '」？\n該類別的作品將移到「' + replacement + '」')) return;
-
       showLoading('刪除類別中...');
       callApi('deleteCategory', { categoryId: catId, replacementName: replacement }, function() {
-        hideLoading();
-        showToast('類別已刪除，作品已移至「' + replacement + '」', 'success');
-        loadCategories();
-      }, function(err) {
-        hideLoading();
-        alert('刪除失敗: ' + err);
-      });
+        hideLoading(); showToast('類別已刪除，作品已移至「' + replacement + '」', 'success'); loadCategories();
+      }, function(err) { hideLoading(); alert('刪除失敗: ' + err); });
     }
 
+    // ============================
+    // 統計 & 年份
+    // ============================
     function loadStatistics() {
       callApi('getStatistics', {}, function(stats) {
-        // 統計卡片
         document.getElementById('stat-total').textContent = stats.totalWorks;
         document.getElementById('stat-students').textContent = stats.totalStudents;
         document.getElementById('stat-pdf').textContent = stats.typeStats.pdf;
         document.getElementById('stat-video').textContent = stats.typeStats.video;
-
-        // 年份統計
         renderYearStats(stats.yearStats);
 
-        // 填入年份下拉選單
         var select = document.getElementById('year-select');
+        select.innerHTML = '<option value="">-- 選擇入學年份 --</option>';
         stats.yearStats.forEach(function(stat) {
           var opt = document.createElement('option');
           opt.value = stat.year;
-          opt.textContent = stat.label +
-            (stat.year > 0 ? (stat.isGraduated ? ' (已畢業)' : ' (在學中)') : '') +
-            ' - ' + stat.workCount + ' 件作品';
+          opt.textContent = stat.label + (stat.year > 0 ? (stat.isGraduated ? ' (已畢業)' : ' (在學中)') : '') + ' - ' + stat.workCount + ' 件作品';
           select.appendChild(opt);
         });
       });
@@ -355,43 +404,23 @@
 
     function renderYearStats(yearStats) {
       var container = document.getElementById('year-stats');
-      if (yearStats.length === 0) {
-        container.innerHTML = '<div class="text-center py-8 text-gray-400">尚無資料</div>';
-        return;
-      }
-
+      if (yearStats.length === 0) { container.innerHTML = '<div class="text-center py-8 text-gray-400">尚無資料</div>'; return; }
       container.innerHTML = '';
       yearStats.forEach(function(stat) {
         var statusClass = stat.isGraduated ? 'graduated' : 'current';
-        var statusText = '';
-        if (stat.year === 0) {
-          statusText = '<span class="text-gray-400 text-sm font-medium"><i class="fas fa-question-circle mr-1"></i>未分類</span>';
-        } else if (stat.isGraduated) {
-          statusText = '<span class="text-red-500 text-sm font-medium"><i class="fas fa-graduation-cap mr-1"></i>已畢業</span>';
-        } else {
-          statusText = '<span class="text-green-500 text-sm font-medium"><i class="fas fa-book-reader mr-1"></i>在學中</span>';
-        }
+        var statusText = stat.year === 0
+          ? '<span class="text-gray-400 text-sm font-medium"><i class="fas fa-question-circle mr-1"></i>未分類</span>'
+          : stat.isGraduated
+            ? '<span class="text-red-500 text-sm font-medium"><i class="fas fa-graduation-cap mr-1"></i>已畢業</span>'
+            : '<span class="text-green-500 text-sm font-medium"><i class="fas fa-book-reader mr-1"></i>在學中</span>';
 
-        container.innerHTML += '' +
+        container.innerHTML +=
           '<div class="year-row ' + statusClass + '">' +
-            '<div class="flex items-center gap-4">' +
-              '<div>' +
-                '<span class="font-bold text-gray-800">' + escapeHtml(stat.label) + '</span>' +
-                '<div class="mt-1">' + statusText + '</div>' +
-              '</div>' +
-            '</div>' +
+            '<div><span class="font-bold text-gray-800">' + escapeHtml(stat.label) + '</span><div class="mt-1">' + statusText + '</div></div>' +
             '<div class="flex items-center gap-6 text-sm">' +
-              '<div class="text-center">' +
-                '<div class="font-bold text-gray-800 text-lg">' + stat.studentCount + '</div>' +
-                '<div class="text-gray-400">位學生</div>' +
-              '</div>' +
-              '<div class="text-center">' +
-                '<div class="font-bold text-gray-800 text-lg">' + stat.workCount + '</div>' +
-                '<div class="text-gray-400">件作品</div>' +
-              '</div>' +
-              '<button class="btn-secondary text-xs" onclick="selectYear(' + stat.year + ')">' +
-                '<i class="fas fa-eye mr-1"></i> 查看' +
-              '</button>' +
+              '<div class="text-center"><div class="font-bold text-gray-800 text-lg">' + stat.studentCount + '</div><div class="text-gray-400">位學生</div></div>' +
+              '<div class="text-center"><div class="font-bold text-gray-800 text-lg">' + stat.workCount + '</div><div class="text-gray-400">件作品</div></div>' +
+              '<button class="btn-secondary text-xs" onclick="selectYear(' + stat.year + ')"><i class="fas fa-eye mr-1"></i> 查看</button>' +
             '</div>' +
           '</div>';
       });
@@ -400,7 +429,6 @@
     function selectYear(year) {
       document.getElementById('year-select').value = year;
       loadYearWorks();
-      // 捲動到批次管理區
       document.getElementById('year-select').scrollIntoView({ behavior: 'smooth' });
     }
 
@@ -408,70 +436,44 @@
       var rawValue = document.getElementById('year-select').value;
       selectedIds = {};
       updateSelectedCount();
-
       if (rawValue === '') {
         document.getElementById('batch-table-container').style.display = 'none';
         document.getElementById('batch-empty').style.display = 'none';
         document.getElementById('batch-hint').style.display = '';
         return;
       }
-
       var year = parseInt(rawValue);
-
       document.getElementById('batch-hint').style.display = 'none';
       showLoading('載入作品列表...');
-
       callApi('getWorksByYear', { year: year }, function(works) {
         hideLoading();
-        yearWorksMap[year] = works;
-
         if (works.length === 0) {
           document.getElementById('batch-table-container').style.display = 'none';
           document.getElementById('batch-empty').style.display = '';
           return;
         }
-
         document.getElementById('batch-empty').style.display = 'none';
         document.getElementById('batch-table-container').style.display = '';
         document.getElementById('select-all').checked = false;
-
         var tbody = document.getElementById('batch-table-body');
         tbody.innerHTML = '';
-
         works.forEach(function(work) {
-          tbody.innerHTML += '' +
+          tbody.innerHTML +=
             '<tr>' +
               '<td><input type="checkbox" value="' + work.id + '" onchange="toggleSelect(\'' + work.id + '\', this.checked)"></td>' +
               '<td>' + escapeHtml(work.studentId) + '</td>' +
               '<td>' + escapeHtml(work.studentName || '-') + '</td>' +
               '<td><a href="' + getBaseUrl() + '?page=viewer&id=' + work.id + '" target="_blank" style="color:#2d5f8a;">' + escapeHtml(truncate(work.title, 30)) + '</a></td>' +
+              '<td class="text-xs">' + escapeHtml(work.category || '-') + '</td>' +
               '<td>' + getFileTypeBadge(work.fileType) + '</td>' +
               '<td class="text-gray-500 text-sm">' + formatDate(work.createdAt) + '</td>' +
             '</tr>';
         });
-      }, function(err) {
-        hideLoading();
-        showToast('載入失敗: ' + err, 'error');
-      });
+      }, function(err) { hideLoading(); showToast('載入失敗: ' + err, 'error'); });
     }
 
-    function toggleSelect(id, checked) {
-      if (checked) {
-        selectedIds[id] = true;
-      } else {
-        delete selectedIds[id];
-      }
-      updateSelectedCount();
-    }
-
-    function toggleSelectAll(checked) {
-      var checkboxes = document.querySelectorAll('#batch-table-body input[type="checkbox"]');
-      checkboxes.forEach(function(cb) {
-        cb.checked = checked;
-        toggleSelect(cb.value, checked);
-      });
-    }
-
+    function toggleSelect(id, checked) { if (checked) selectedIds[id] = true; else delete selectedIds[id]; updateSelectedCount(); }
+    function toggleSelectAll(checked) { document.querySelectorAll('#batch-table-body input[type="checkbox"]').forEach(function(cb) { cb.checked = checked; toggleSelect(cb.value, checked); }); }
     function updateSelectedCount() {
       var count = Object.keys(selectedIds).length;
       document.getElementById('selected-count').textContent = count;
@@ -480,33 +482,13 @@
 
     function batchDelete() {
       var ids = Object.keys(selectedIds);
-      if (ids.length === 0) {
-        alert('請先勾選要刪除的作品');
-        return;
-      }
-
-      if (!confirm('確定要刪除所選的 ' + ids.length + ' 件作品嗎？\n此操作會同時刪除 Google Drive 上的檔案，且無法復原。')) {
-        return;
-      }
-
-      showLoading('批次刪除中... 請稍候');
+      if (ids.length === 0) { alert('請先勾選要刪除的作品'); return; }
+      if (!confirm('確定要刪除所選的 ' + ids.length + ' 件作品嗎？\n此操作無法復原。')) return;
+      showLoading('批次刪除中...');
       callApi('batchDelete', { workIds: ids }, function(result) {
-        hideLoading();
-        alert('成功刪除 ' + result.deletedCount + ' 件作品');
-
-        if (result.errors && result.errors.length > 0) {
-          alert('部分檔案刪除失敗:\n' + result.errors.join('\n'));
-        }
-
-        // 重新載入
-        selectedIds = {};
-        updateSelectedCount();
-        loadYearWorks();
-        loadStatistics();
-      }, function(err) {
-        hideLoading();
-        alert('批次刪除失敗: ' + err);
-      });
+        hideLoading(); alert('成功刪除 ' + result.deletedCount + ' 件作品');
+        selectedIds = {}; updateSelectedCount(); loadYearWorks(); loadStatistics();
+      }, function(err) { hideLoading(); alert('批次刪除失敗: ' + err); });
     }
   </script>
 </body>

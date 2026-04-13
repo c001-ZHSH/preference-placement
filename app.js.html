@@ -289,21 +289,95 @@ function loadVideoThumbnails(works) {
   works.forEach(function(work) {
     if (work.fileType === 'video' && work.driveFileId) {
       var thumbId = 'thumb-' + work.id;
+
+      // 先嘗試 Drive 縮圖 API
       callApi('getThumbnail', { fileId: work.driveFileId }, function(dataUrl) {
         if (dataUrl) {
-          var el = document.getElementById(thumbId);
-          if (el) {
-            el.setAttribute('data-thumb-url', dataUrl);
-            el.innerHTML =
-              '<img src="' + dataUrl + '" style="width:100%;height:100%;object-fit:cover;" class="thumb-img">' +
-              '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;" class="play-overlay">' +
-                '<i class="fas fa-play-circle" style="font-size:3rem;color:white;opacity:0.85;text-shadow:0 2px 8px rgba(0,0,0,0.5);"></i>' +
-              '</div>';
-          }
+          setVideoThumbImage(thumbId, dataUrl);
+        } else {
+          // Drive 縮圖失敗，改用影片第一幀
+          loadVideoFirstFrame(work.driveFileId, thumbId);
         }
+      }, function() {
+        loadVideoFirstFrame(work.driveFileId, thumbId);
       });
     }
   });
+}
+
+/**
+ * 從影片取得第一幀作為縮圖
+ */
+function loadVideoFirstFrame(fileId, thumbId) {
+  // 如果已有快取的 blob URL，直接用它取第一幀
+  if (videoBlobCache[fileId]) {
+    extractFrameFromBlobUrl(videoBlobCache[fileId], thumbId);
+    return;
+  }
+
+  // 沒有快取，從後端取得影片資料
+  google.script.run
+    .withSuccessHandler(function(result) {
+      if (!result || !result.base64) return;
+      try {
+        var byteChars = atob(result.base64);
+        var byteArrays = [];
+        for (var offset = 0; offset < byteChars.length; offset += 512) {
+          var slice = byteChars.slice(offset, offset + 512);
+          var byteNumbers = new Array(slice.length);
+          for (var i = 0; i < slice.length; i++) {
+            byteNumbers[i] = slice.charCodeAt(i);
+          }
+          byteArrays.push(new Uint8Array(byteNumbers));
+        }
+        var blob = new Blob(byteArrays, { type: result.mimeType });
+        var blobUrl = URL.createObjectURL(blob);
+        videoBlobCache[fileId] = blobUrl;
+        extractFrameFromBlobUrl(blobUrl, thumbId);
+      } catch (e) { /* ignore */ }
+    })
+    .withFailureHandler(function() {})
+    .getFileBase64(fileId);
+}
+
+/**
+ * 從 blob URL 擷取影片第一幀作為靜態圖片
+ */
+function extractFrameFromBlobUrl(blobUrl, thumbId) {
+  var video = document.createElement('video');
+  video.crossOrigin = 'anonymous';
+  video.muted = true;
+  video.src = blobUrl;
+
+  video.addEventListener('loadeddata', function() {
+    video.currentTime = 0.5; // 取 0.5 秒的畫面
+  });
+
+  video.addEventListener('seeked', function() {
+    try {
+      var canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+      var frameUrl = canvas.toDataURL('image/jpeg', 0.7);
+      setVideoThumbImage(thumbId, frameUrl);
+    } catch (e) { /* ignore */ }
+  });
+
+  video.load();
+}
+
+function setVideoThumbImage(thumbId, imageUrl) {
+  var el = document.getElementById(thumbId);
+  if (!el) return;
+  el.setAttribute('data-thumb-url', imageUrl);
+  el.setAttribute('data-original-html',
+    '<img src="' + imageUrl + '" style="width:100%;height:100%;object-fit:cover;">' +
+    '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">' +
+      '<i class="fas fa-play-circle" style="font-size:3rem;color:white;opacity:0.85;text-shadow:0 2px 8px rgba(0,0,0,0.5);"></i>' +
+    '</div>'
+  );
+  el.innerHTML = el.getAttribute('data-original-html');
 }
 
 /**
@@ -324,14 +398,16 @@ function startVideoPreview(el) {
 
   // 沒有快取，載入影片（顯示載入提示）
   previewLoadingId = fileId;
-  var overlay = el.querySelector('.play-overlay');
-  if (overlay) {
-    overlay.innerHTML = '<div class="spinner" style="width:30px;height:30px;border-width:3px;border-top-color:white;"></div>';
-  }
 
-  callApi('getThumbnail', { fileId: '__video__' + fileId }, function() {
-    // getThumbnail 不適合取影片，改用 getFileBase64
-  });
+  // 顯示載入中 spinner
+  if (!el.getAttribute('data-original-html')) {
+    el.setAttribute('data-original-html', el.innerHTML);
+  }
+  el.innerHTML =
+    '<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;flex-direction:column;gap:8px;">' +
+      '<div class="spinner" style="width:30px;height:30px;border-width:3px;border-top-color:white;"></div>' +
+      '<span style="color:white;font-size:0.75rem;opacity:0.7;">載入預覽...</span>' +
+    '</div>';
 
   // 用 getFileBase64 取得影片資料
   google.script.run

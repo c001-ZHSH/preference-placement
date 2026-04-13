@@ -27,7 +27,11 @@ function getStudentsList() {
   var data = sheet.getDataRange().getValues();
   var list = [];
   for (var i = 1; i < data.length; i++) {
-    list.push({ email: data[i][0].toString().toLowerCase(), name: data[i][1].toString() });
+    list.push({
+      email: data[i][0].toString().toLowerCase(),
+      name: data[i][1].toString(),
+      enrollYear: data[i][2] ? parseInt(data[i][2], 10) : 0
+    });
   }
 
   cache.put('students_list', JSON.stringify(list), CACHE_TTL);
@@ -112,14 +116,27 @@ function getStudentId(email) {
 }
 
 /**
- * 從學號判斷入學年份
+ * 取得入學年份（優先從 students 表讀取，退回學號前3碼）
  */
 function getEnrollmentYear(studentId) {
-  if (!studentId || studentId.length < 3) return 0;
-  var yearStr = studentId.substring(0, 3);
-  var year = parseInt(yearStr, 10);
-  if (isNaN(year) || year < 90 || year > 200) return 0;
-  return year;
+  if (!studentId) return 0;
+
+  // 從 students 表查找 enrollYear 欄位
+  var emailLower = (studentId + '@mail2.chshs.ntpc.edu.tw').toLowerCase();
+  var list = getStudentsList();
+  for (var i = 0; i < list.length; i++) {
+    if (list[i].email === emailLower && list[i].enrollYear > 0) {
+      return list[i].enrollYear;
+    }
+  }
+
+  // 退回：嘗試從學號前3碼判斷
+  if (studentId.length >= 3) {
+    var yearStr = studentId.substring(0, 3);
+    var year = parseInt(yearStr, 10);
+    if (!isNaN(year) && year >= 90 && year <= 200) return year;
+  }
+  return 0;
 }
 
 /**

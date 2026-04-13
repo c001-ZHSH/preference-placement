@@ -165,6 +165,9 @@ function handleApiRequest(action, params) {
         return { success: true, data: getUserInfo(userEmail) };
 
       // 管理員功能
+      case 'searchWorks':
+        if (!isAdmin(userEmail)) return { success: false, error: '需要管理員權限' };
+        return { success: true, data: searchWorks(params.query) };
       case 'getStatistics':
         if (!isAdmin(userEmail)) return { success: false, error: '需要管理員權限' };
         return { success: true, data: getStatistics() };
@@ -277,7 +280,7 @@ function initializeSpreadsheet() {
   var studentsSheet = ss.getSheetByName('students');
   if (!studentsSheet) {
     studentsSheet = ss.insertSheet('students');
-    studentsSheet.appendRow(['email', 'name']);
+    studentsSheet.appendRow(['email', 'name', 'enrollYear']);
     studentsSheet.setFrozenRows(1);
     // 範例學生（請修改為實際學生資料，或批次匯入）
     studentsSheet.appendRow(['110001@mail2.chshs.ntpc.edu.tw', '範例學生']);

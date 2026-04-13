@@ -513,3 +513,33 @@ function deleteCategory(categoryId, replacementName) {
   clearWorksCache();
   return true;
 }
+
+/**
+ * 搜尋作品（管理員用，搜尋標題/學號/姓名/類別）
+ */
+function searchWorks(query) {
+  if (!query) return [];
+  query = query.toLowerCase();
+
+  var cached = getCachedWorks();
+  var results = [];
+
+  for (var i = 0; i < cached.works.length; i++) {
+    var w = cached.works[i];
+    var text = [
+      w.title || '', w.studentId || '', w.studentName || '',
+      w.description || '', w.category || ''
+    ].join(' ').toLowerCase();
+
+    if (text.indexOf(query) !== -1) {
+      results.push(w);
+    }
+  }
+
+  // 依上傳時間新到舊
+  results.sort(function(a, b) {
+    return new Date(b.createdAt) - new Date(a.createdAt);
+  });
+
+  return results;
+}
