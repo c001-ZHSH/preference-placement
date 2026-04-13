@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>作品檢視 - 自主學習成果展示平台</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    * { font-family: 'Noto Sans TC', sans-serif; }
+    body { background-color: #f0f4f8; min-height: 100vh; }
+    .navbar { background: linear-gradient(135deg, #1e3a5f 0%, #2d5f8a 100%); box-shadow: 0 2px 10px rgba(0,0,0,0.15); }
+    .navbar a { transition: all 0.2s ease; text-decoration: none; }
+    .navbar a:hover { background-color: rgba(255,255,255,0.15); border-radius: 8px; }
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 500; }
+    .badge-pdf { background: #fed7d7; color: #c53030; }
+
+    .pdf-viewer { background: #2d3748; border-radius: 12px; overflow: hidden; }
+    .pdf-canvas-container { display: flex; justify-content: center; align-items: center; min-height: 500px; padding: 20px; }
+    .pdf-canvas-container .pdf-page {
+      width: 90%; max-width: 600px; background: white; min-height: 700px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4); border-radius: 4px;
+      display: flex; flex-direction: column; padding: 48px; color: #333;
+    }
+    .pdf-page h1 { font-size: 1.5rem; font-weight: bold; margin-bottom: 24px; text-align: center; color: #1e3a5f; }
+    .pdf-page h2 { font-size: 1.1rem; font-weight: bold; margin: 16px 0 8px; color: #2d5f8a; }
+    .pdf-page p { font-size: 0.9rem; line-height: 1.8; margin-bottom: 12px; color: #4a5568; }
+
+    .pdf-controls {
+      background: rgba(0,0,0,0.7); padding: 10px 20px;
+      display: flex; align-items: center; justify-content: center; gap: 12px;
+    }
+    .pdf-controls button {
+      background: rgba(255,255,255,0.15); border: none; color: white;
+      width: 36px; height: 36px; border-radius: 8px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; transition: background 0.2s;
+    }
+    .pdf-controls button:hover { background: rgba(255,255,255,0.3); }
+    .pdf-controls span { color: white; font-size: 0.875rem; }
+
+    .work-info-panel { background: white; border-radius: 16px; padding: 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+  </style>
+</head>
+<body>
+  <!-- 導覽列 -->
+  <nav class="navbar px-4 py-3">
+    <div class="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-3">
+      <a href="index.html" class="flex items-center gap-2 text-white text-lg font-bold" style="text-decoration:none;">
+        <i class="fas fa-graduation-cap text-2xl"></i><span>自主學習成果展示平台</span>
+      </a>
+      <div class="flex items-center gap-2 flex-wrap">
+        <a href="index.html" class="text-white text-sm px-3 py-2" style="text-decoration:none;"><i class="fas fa-home mr-1"></i> 首頁</a>
+        <a href="upload.html" class="text-white text-sm px-3 py-2" style="text-decoration:none;"><i class="fas fa-cloud-upload-alt mr-1"></i> 上傳作品</a>
+        <a href="my-works.html" class="text-white text-sm px-3 py-2" style="text-decoration:none;"><i class="fas fa-folder-open mr-1"></i> 我的作品</a>
+        <a href="admin.html" class="text-white text-sm px-3 py-2" style="text-decoration:none;"><i class="fas fa-cog mr-1"></i> 管理後台</a>
+      </div>
+      <div class="flex items-center gap-2 text-white text-sm"><i class="fas fa-user-circle text-xl"></i><span>110001</span></div>
+    </div>
+  </nav>
+
+  <div class="max-w-7xl mx-auto px-4 py-8">
+    <div class="mb-4">
+      <a href="index.html" class="text-gray-500 hover:text-gray-700" style="text-decoration:none;">
+        <i class="fas fa-arrow-left mr-1"></i> 返回首頁
+      </a>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- PDF 閱讀器 -->
+      <div class="lg:col-span-2">
+        <div class="pdf-viewer">
+          <div class="pdf-canvas-container">
+            <div class="pdf-page">
+              <h1>探索人工智慧在教育中的應用</h1>
+              <p style="text-align:center; color:#718096; margin-bottom:32px;">110001 王小明 ｜ 民國 114 年</p>
+              <h2>一、研究動機</h2>
+              <p>隨著科技的飛速發展，人工智慧（AI）已經滲透到生活的各個層面。身為高中生，我對 AI 如何改變教育模式感到非常好奇。特別是在疫情期間，線上學習成為常態，AI 輔助教學的需求更加迫切。</p>
+              <h2>二、研究方法</h2>
+              <p>本研究採用文獻分析法與實際體驗法，蒐集國內外有關 AI 教育應用的學術論文與報導，並實際使用多款 AI 教育工具進行學習體驗。</p>
+              <h2>三、研究發現</h2>
+              <p>AI 在教育中的應用主要包含以下面向：個人化學習路徑推薦、智慧型作業批改系統、自適應測驗系統、以及 AI 虛擬助教等。這些工具能夠根據學生的學習狀況即時調整教學內容與難度。</p>
+              <h2>四、結論與心得</h2>
+              <p>透過本次研究，我深刻體會到 AI 技術對教育的巨大潛力。然而，AI 無法完全取代教師的角色，人際互動與情感支持仍然是教育不可或缺的部分。</p>
+            </div>
+          </div>
+          <div class="pdf-controls">
+            <button title="上一頁"><i class="fas fa-chevron-left"></i></button>
+            <span>1 / 5</span>
+            <button title="下一頁"><i class="fas fa-chevron-right"></i></button>
+            <span style="margin:0 8px; opacity:0.3;">|</span>
+            <button title="縮小"><i class="fas fa-search-minus"></i></button>
+            <span style="min-width:40px; text-align:center;">100%</span>
+            <button title="放大"><i class="fas fa-search-plus"></i></button>
+            <span style="margin:0 8px; opacity:0.3;">|</span>
+            <button title="全螢幕"><i class="fas fa-expand"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 作品資訊 -->
+      <div>
+        <div class="work-info-panel">
+          <div class="mb-3"><span class="badge badge-pdf"><i class="fas fa-file-pdf mr-1"></i>PDF</span></div>
+          <h1 class="text-xl font-bold text-gray-800 mb-3">探索人工智慧在教育中的應用</h1>
+          <div class="flex items-center gap-3 mb-4 pb-4 border-b border-gray-100">
+            <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+              <i class="fas fa-user text-blue-500"></i>
+            </div>
+            <div>
+              <p class="font-medium text-gray-800">王小明</p>
+              <p class="text-xs text-gray-400">上傳於 114/03/15</p>
+            </div>
+          </div>
+          <div>
+            <h3 class="font-bold text-gray-700 mb-2"><i class="fas fa-align-left mr-1 text-gray-400"></i> 學習說明</h3>
+            <p class="text-gray-600 leading-relaxed">本報告探討了人工智慧技術如何應用於現代教育中，包括個人化學習、智慧評量系統等面向。透過文獻回顧與實際體驗，分析 AI 教育工具的優缺點，並提出對未來教育發展的展望。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="text-center py-6 mt-12 text-gray-400 text-sm"><p>竹山高中 自主學習成果展示平台</p></footer>
+</body>
+</html>
