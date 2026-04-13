@@ -1,0 +1,64 @@
+<!-- ============================================ -->
+<!-- components.html - 共用 UI 元件 -->
+<!-- ============================================ -->
+
+<!-- 導覽列 -->
+<nav class="navbar px-4 py-3" id="main-navbar">
+  <div class="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-3">
+    <!-- Logo -->
+    <a href="<?= ScriptApp.getService().getUrl() ?>" class="flex items-center gap-2 text-white text-lg font-bold no-underline" style="text-decoration:none;">
+      <i class="fas fa-graduation-cap text-2xl"></i>
+      <span>自主學習成果展示平台</span>
+    </a>
+
+    <!-- 導覽連結 -->
+    <div class="flex items-center gap-2 flex-wrap" id="nav-links">
+      <a href="<?= ScriptApp.getService().getUrl() ?>" class="text-white text-sm px-3 py-2 no-underline" style="text-decoration:none;">
+        <i class="fas fa-home mr-1"></i> 首頁
+      </a>
+      <a href="<?= ScriptApp.getService().getUrl() ?>?page=upload" class="text-white text-sm px-3 py-2 no-underline" style="text-decoration:none;">
+        <i class="fas fa-cloud-upload-alt mr-1"></i> 上傳作品
+      </a>
+      <a href="<?= ScriptApp.getService().getUrl() ?>?page=my-works" class="text-white text-sm px-3 py-2 no-underline" style="text-decoration:none;">
+        <i class="fas fa-folder-open mr-1"></i> 我的作品
+      </a>
+      <a href="<?= ScriptApp.getService().getUrl() ?>?page=admin" class="text-white text-sm px-3 py-2 no-underline" style="text-decoration:none;" id="nav-admin" style="display:none;">
+        <i class="fas fa-cog mr-1"></i> 管理後台
+      </a>
+    </div>
+
+    <!-- 使用者資訊 -->
+    <div class="flex items-center gap-2 text-white text-sm" id="user-info">
+      <i class="fas fa-user-circle text-xl"></i>
+      <span id="user-display-name">載入中...</span>
+    </div>
+  </div>
+</nav>
+
+<!-- Toast 通知容器 -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- 確認彈窗 -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal-content">
+    <h3 class="text-lg font-bold mb-3" id="confirm-title">確認操作</h3>
+    <p class="text-gray-600 mb-6" id="confirm-message">確定要執行此操作嗎？</p>
+    <div class="flex justify-end gap-3">
+      <button class="btn-secondary" onclick="closeConfirm()">取消</button>
+      <button class="btn-danger" id="confirm-btn" onclick="confirmAction()">確定</button>
+    </div>
+  </div>
+</div>
+
+<!-- 載入遮罩 -->
+<div class="modal-overlay" id="loading-overlay" style="background:rgba(255,255,255,0.8);">
+  <div class="text-center">
+    <div class="spinner mb-4"></div>
+    <p class="text-gray-600 font-medium" id="loading-text">載入中...</p>
+  </div>
+</div>
+
+<!-- Footer -->
+<footer class="text-center py-6 mt-12 text-gray-400 text-sm">
+  <p>竹山高中 自主學習成果展示平台</p>
+</footer>

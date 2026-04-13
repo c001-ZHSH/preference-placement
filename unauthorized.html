@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    * { font-family: 'Noto Sans TC', sans-serif; }
+    body {
+      background: linear-gradient(135deg, #1e3a5f 0%, #2d5f8a 50%, #667eea 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+  <div style="background:white; border-radius:20px; padding:48px; max-width:480px; width:90%; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+    <i class="fas fa-lock text-6xl text-gray-300 mb-6" style="display:block;"></i>
+    <h1 class="text-2xl font-bold text-gray-800 mb-3">需要學校帳號登入</h1>
+    <p class="text-gray-500 mb-6 leading-relaxed">
+      此平台僅限本校學生使用。<br>
+      請使用學校 Google 帳號登入<br>
+      <strong class="text-gray-700">（學號@mail2.chshs.ntpc.edu.tw）</strong>
+    </p>
+    <div style="background:#f7fafc; border-radius:12px; padding:16px; margin-bottom:24px;">
+      <p class="text-sm text-gray-500">
+        <i class="fas fa-info-circle mr-1"></i>
+        如果您已登入其他 Google 帳號，請先登出後再以學校帳號重新登入。
+      </p>
+    </div>
+    <a href="https://accounts.google.com" target="_blank"
+       style="display:inline-flex; align-items:center; gap:8px; background:linear-gradient(135deg,#1e3a5f,#2d5f8a); color:white; padding:12px 32px; border-radius:10px; text-decoration:none; font-weight:500;">
+      <i class="fab fa-google"></i> 前往 Google 登入
+    </a>
+  </div>
+</body>
+</html>

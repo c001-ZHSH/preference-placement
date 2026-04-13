@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <?!= include('styles') ?>
+</head>
+<body>
+  <?!= include('components') ?>
+
+  <!-- 主要內容 -->
+  <div class="max-w-7xl mx-auto px-4 py-8">
+    <!-- 標題區 -->
+    <div class="text-center mb-8">
+      <h1 class="text-3xl font-bold text-gray-800 mb-2">自主學習成果展示</h1>
+      <p class="text-gray-500">瀏覽同學們的學習成果，一起互相學習成長！</p>
+    </div>
+
+    <!-- 搜尋與篩選列 -->
+    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-8">
+      <div class="search-bar flex-1">
+        <i class="fas fa-search text-gray-400"></i>
+        <input type="text" id="search-input" placeholder="搜尋作品標題、學號或姓名..."
+               onkeyup="handleSearch(event)">
+      </div>
+      <div class="flex gap-2">
+        <button class="btn-secondary filter-btn active" data-type="" onclick="setFilter('')">
+          <i class="fas fa-th-large mr-1"></i> 全部
+        </button>
+        <button class="btn-secondary filter-btn" data-type="pdf" onclick="setFilter('pdf')">
+          <i class="fas fa-file-pdf mr-1"></i> PDF
+        </button>
+        <button class="btn-secondary filter-btn" data-type="video" onclick="setFilter('video')">
+          <i class="fas fa-video mr-1"></i> 影片
+        </button>
+      </div>
+    </div>
+
+    <!-- 作品列表 -->
+    <div id="works-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <!-- 由 JS 動態填入 -->
+    </div>
+
+    <!-- 空狀態 -->
+    <div id="empty-state" class="empty-state" style="display:none;">
+      <i class="fas fa-folder-open" style="display:block;"></i>
+      <h3 class="text-xl font-bold text-gray-400 mb-2">尚無作品</h3>
+      <p class="text-gray-400 mb-4">還沒有任何同學上傳作品，快來成為第一個吧！</p>
+      <button class="btn-primary" onclick="navigateTo('upload')">
+        <i class="fas fa-cloud-upload-alt"></i> 上傳我的作品
+      </button>
+    </div>
+
+    <!-- 載入中 -->
+    <div id="loading-state" class="text-center py-12">
+      <div class="spinner mb-4" style="margin:0 auto;"></div>
+      <p class="text-gray-400">載入作品中...</p>
+    </div>
+
+    <!-- 分頁 -->
+    <div id="pagination-container" class="flex justify-center mt-8" style="display:none;">
+      <div class="pagination" id="pagination"></div>
+    </div>
+  </div>
+
+  <?!= include('app.js') ?>
+
+  <script>
+    // === 首頁邏輯 ===
+    var currentPage = 1;
+    var currentSearch = '';
+    var currentFilter = '';
+    var searchTimer = null;
+
+    function onUserLoaded(user) {
+      loadWorks();
+    }
+
+    function loadWorks() {
+      document.getElementById('loading-state').style.display = '';
+      document.getElementById('works-grid').style.display = 'none';
+      document.getElementById('empty-state').style.display = 'none';
+      document.getElementById('pagination-container').style.display = 'none';
+
+      callApi('getAllWorks', {
+        page: currentPage,
+        pageSize: 12,
+        search: currentSearch,
+        fileType: currentFilter
+      }, function(result) {
+        document.getElementById('loading-state').style.display = 'none';
+
+        if (result.works.length === 0) {
+          document.getElementById('empty-state').style.display = '';
+          return;
+        }
+
+        document.getElementById('works-grid').style.display = '';
+        var grid = document.getElementById('works-grid');
+        grid.innerHTML = '';
+
+        result.works.forEach(function(work) {
+          grid.innerHTML += createWorkCard(work);
+        });
+
+        // 分頁
+        if (result.totalPages > 1) {
+          document.getElementById('pagination-container').style.display = '';
+          renderPagination(result.page, result.totalPages);
+        }
+      }, function(err) {
+        document.getElementById('loading-state').style.display = 'none';
+        showToast('載入失敗: ' + err, 'error');
+      });
+    }
+
+    function handleSearch(event) {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(function() {
+        currentSearch = document.getElementById('search-input').value.trim();
+        currentPage = 1;
+        loadWorks();
+      }, 400);
+    }
+
+    function setFilter(type) {
+      currentFilter = type;
+      currentPage = 1;
+
+      // 更新按鈕狀態
+      document.querySelectorAll('.filter-btn').forEach(function(btn) {
+        btn.classList.remove('active');
+        if (btn.getAttribute('data-type') === type) {
+          btn.classList.add('active');
+        }
+      });
+
+      // 更新 active 樣式
+      document.querySelectorAll('.filter-btn').forEach(function(btn) {
+        if (btn.classList.contains('active')) {
+          btn.style.background = '#2d5f8a';
+          btn.style.color = 'white';
+        } else {
+          btn.style.background = '#e2e8f0';
+          btn.style.color = '#4a5568';
+        }
+      });
+
+      loadWorks();
+    }
+
+    function renderPagination(page, totalPages) {
+      var container = document.getElementById('pagination');
+      container.innerHTML = '';
+
+      // 上一頁
+      var prevBtn = document.createElement('button');
+      prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
+      prevBtn.disabled = page <= 1;
+      prevBtn.onclick = function() { goToPage(page - 1); };
+      container.appendChild(prevBtn);
+
+      // 頁碼
+      var start = Math.max(1, page - 2);
+      var end = Math.min(totalPages, page + 2);
+
+      for (var i = start; i <= end; i++) {
+        var btn = document.createElement('button');
+        btn.textContent = i;
+        btn.className = i === page ? 'active' : '';
+        btn.onclick = (function(p) {
+          return function() { goToPage(p); };
+        })(i);
+        container.appendChild(btn);
+      }
+
+      // 下一頁
+      var nextBtn = document.createElement('button');
+      nextBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
+      nextBtn.disabled = page >= totalPages;
+      nextBtn.onclick = function() { goToPage(page + 1); };
+      container.appendChild(nextBtn);
+    }
+
+    function goToPage(page) {
+      currentPage = page;
+      loadWorks();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // 初始化篩選按鈕樣式
+    setFilter('');
+  </script>
+</body>
+</html>

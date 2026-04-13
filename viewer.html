@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <?!= include('styles') ?>
+  <style>
+    /* PDF 閱讀器 */
+    .pdf-viewer {
+      background: #2d3748;
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .pdf-canvas-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 500px;
+      padding: 20px;
+      overflow: auto;
+    }
+
+    .pdf-canvas-container canvas {
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      max-width: 100%;
+    }
+
+    .pdf-controls {
+      background: rgba(0,0,0,0.7);
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .pdf-controls button {
+      background: rgba(255,255,255,0.15);
+      border: none;
+      color: white;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+
+    .pdf-controls button:hover { background: rgba(255,255,255,0.3); }
+    .pdf-controls button:disabled { opacity: 0.3; cursor: not-allowed; }
+    .pdf-controls span { color: white; font-size: 0.875rem; }
+
+    /* 影片播放器 */
+    .video-player {
+      background: #000;
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .video-player video {
+      width: 100%;
+      display: block;
+    }
+
+    .video-controls {
+      background: linear-gradient(transparent, rgba(0,0,0,0.8));
+      padding: 16px 20px 12px;
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .video-player:hover .video-controls {
+      opacity: 1;
+    }
+
+    .video-progress {
+      width: 100%;
+      height: 5px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 3px;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .video-progress-fill {
+      height: 100%;
+      background: #667eea;
+      border-radius: 3px;
+      transition: width 0.1s;
+    }
+
+    .video-btn-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .video-btn-row button {
+      background: none;
+      border: none;
+      color: white;
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+
+    .video-btn-row button:hover { background: rgba(255,255,255,0.15); }
+    .video-btn-row span { color: white; font-size: 0.8rem; }
+
+    .speed-menu {
+      position: absolute;
+      bottom: 60px;
+      right: 20px;
+      background: rgba(0,0,0,0.9);
+      border-radius: 8px;
+      overflow: hidden;
+      display: none;
+    }
+
+    .speed-menu.active { display: block; }
+
+    .speed-menu button {
+      display: block;
+      width: 100%;
+      padding: 8px 20px;
+      color: white;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 0.85rem;
+      text-align: left;
+    }
+
+    .speed-menu button:hover { background: rgba(255,255,255,0.15); }
+    .speed-menu button.active { color: #667eea; font-weight: bold; }
+
+    /* 作品資訊側邊 */
+    .work-info-panel {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+  </style>
+</head>
+<body>
+  <?!= include('components') ?>
+
+  <div class="max-w-7xl mx-auto px-4 py-8">
+    <!-- 返回按鈕 -->
+    <div class="mb-4">
+      <a href="<?= ScriptApp.getService().getUrl() ?>" class="text-gray-500 hover:text-gray-700" style="text-decoration:none;">
+        <i class="fas fa-arrow-left mr-1"></i> 返回首頁
+      </a>
+    </div>
+
+    <div id="viewer-content" style="display:none;">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- 左側：閱讀器 / 播放器 -->
+        <div class="lg:col-span-2">
+          <!-- PDF 閱讀器 -->
+          <div id="pdf-viewer" class="pdf-viewer" style="display:none;">
+            <div class="pdf-canvas-container" id="pdf-canvas-container">
+              <canvas id="pdf-canvas"></canvas>
+            </div>
+            <div class="pdf-controls">
+              <button onclick="pdfPrevPage()" id="pdf-prev" title="上一頁">
+                <i class="fas fa-chevron-left"></i>
+              </button>
+              <span id="pdf-page-info">1 / 1</span>
+              <button onclick="pdfNextPage()" id="pdf-next" title="下一頁">
+                <i class="fas fa-chevron-right"></i>
+              </button>
+              <span style="margin:0 8px; opacity:0.3;">|</span>
+              <button onclick="pdfZoomOut()" title="縮小">
+                <i class="fas fa-search-minus"></i>
+              </button>
+              <span id="pdf-zoom-info" style="min-width:40px; text-align:center;">100%</span>
+              <button onclick="pdfZoomIn()" title="放大">
+                <i class="fas fa-search-plus"></i>
+              </button>
+              <span style="margin:0 8px; opacity:0.3;">|</span>
+              <button onclick="pdfFullscreen()" title="全螢幕">
+                <i class="fas fa-expand"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- 影片播放器 -->
+          <div id="video-player" class="video-player" style="display:none;">
+            <video id="video-element" onclick="toggleVideoPlay()"></video>
+            <div class="video-controls">
+              <div class="video-progress" id="video-progress" onclick="seekVideo(event)">
+                <div class="video-progress-fill" id="video-progress-fill"></div>
+              </div>
+              <div class="video-btn-row">
+                <div class="flex items-center gap-2">
+                  <button onclick="toggleVideoPlay()" id="video-play-btn">
+                    <i class="fas fa-play"></i>
+                  </button>
+                  <button onclick="toggleMute()" id="video-mute-btn">
+                    <i class="fas fa-volume-up"></i>
+                  </button>
+                  <input type="range" min="0" max="1" step="0.1" value="1"
+                         onchange="setVolume(this.value)" style="width:60px; accent-color:#667eea;">
+                  <span id="video-time">0:00 / 0:00</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button onclick="toggleSpeedMenu()" id="speed-btn">
+                    <i class="fas fa-tachometer-alt"></i> <span id="speed-label">1x</span>
+                  </button>
+                  <button onclick="videoFullscreen()">
+                    <i class="fas fa-expand"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="speed-menu" id="speed-menu">
+              <button onclick="setSpeed(0.5)">0.5x</button>
+              <button onclick="setSpeed(0.75)">0.75x</button>
+              <button class="active" onclick="setSpeed(1)">1x</button>
+              <button onclick="setSpeed(1.25)">1.25x</button>
+              <button onclick="setSpeed(1.5)">1.5x</button>
+              <button onclick="setSpeed(2)">2x</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右側：作品資訊 -->
+        <div>
+          <div class="work-info-panel">
+            <div class="mb-3" id="work-type-badge"></div>
+            <h1 class="text-xl font-bold text-gray-800 mb-3" id="work-title"></h1>
+            <div class="flex items-center gap-3 mb-4 pb-4 border-b border-gray-100">
+              <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <i class="fas fa-user text-blue-500"></i>
+              </div>
+              <div>
+                <p class="font-medium text-gray-800" id="work-author"></p>
+                <p class="text-xs text-gray-400" id="work-date"></p>
+              </div>
+            </div>
+            <div>
+              <h3 class="font-bold text-gray-700 mb-2">
+                <i class="fas fa-align-left mr-1 text-gray-400"></i> 學習說明
+              </h3>
+              <p class="text-gray-600 leading-relaxed whitespace-pre-wrap" id="work-description">
+                暫無說明
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 載入中 -->
+    <div id="viewer-loading" class="text-center py-20">
+      <div class="spinner mb-4" style="margin:0 auto;"></div>
+      <p class="text-gray-400">載入作品中...</p>
+    </div>
+
+    <!-- 找不到作品 -->
+    <div id="viewer-notfound" class="empty-state" style="display:none;">
+      <i class="fas fa-exclamation-circle" style="display:block;"></i>
+      <h3 class="text-xl font-bold text-gray-400 mb-2">找不到作品</h3>
+      <p class="text-gray-400 mb-4">此作品可能已被刪除或不存在</p>
+      <button class="btn-primary" onclick="navigateTo('index')">
+        <i class="fas fa-home"></i> 返回首頁
+      </button>
+    </div>
+  </div>
+
+  <!-- PDF.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+  <?!= include('app.js') ?>
+
+  <script>
+    var workId = '<?= workId ?>';
+    var pdfDoc = null;
+    var pdfPageNum = 1;
+    var pdfScale = 1.2;
+
+    function onUserLoaded(user) {
+      if (!workId) {
+        showNotFound();
+        return;
+      }
+      loadWork();
+    }
+
+    function loadWork() {
+      callApi('getWorkById', { id: workId }, function(work) {
+        if (!work) { showNotFound(); return; }
+
+        document.getElementById('viewer-loading').style.display = 'none';
+        document.getElementById('viewer-content').style.display = '';
+
+        // 填入作品資訊
+        document.getElementById('work-title').textContent = work.title;
+        document.getElementById('work-author').textContent = work.studentName || work.studentId;
+        document.getElementById('work-date').textContent = '上傳於 ' + formatDate(work.createdAt);
+        document.getElementById('work-type-badge').innerHTML = getFileTypeBadge(work.fileType);
+
+        if (work.description) {
+          document.getElementById('work-description').textContent = work.description;
+        }
+
+        // 根據檔案類型載入
+        if (work.fileType === 'pdf') {
+          loadPdfViewer(work.driveFileId);
+        } else {
+          loadVideoPlayer(work.driveFileId);
+        }
+      }, function(err) {
+        showNotFound();
+      });
+    }
+
+    function showNotFound() {
+      document.getElementById('viewer-loading').style.display = 'none';
+      document.getElementById('viewer-notfound').style.display = '';
+    }
+
+    // ============================
+    // PDF 閱讀器
+    // ============================
+    function loadPdfViewer(fileId) {
+      document.getElementById('pdf-viewer').style.display = '';
+
+      // 透過 Apps Script 取得 PDF base64 資料
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (!result) {
+            showToast('無法載入 PDF 檔案', 'error');
+            return;
+          }
+          var pdfData = atob(result.base64);
+          var pdfjsLib = window['pdfjs-dist/build/pdf'];
+          pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+          pdfjsLib.getDocument({ data: pdfData }).promise.then(function(doc) {
+            pdfDoc = doc;
+            document.getElementById('pdf-page-info').textContent = '1 / ' + doc.numPages;
+            renderPdfPage(1);
+          });
+        })
+        .withFailureHandler(function(err) {
+          showToast('載入 PDF 失敗', 'error');
+        })
+        .getFileBase64(fileId);
+    }
+
+    function renderPdfPage(num) {
+      pdfDoc.getPage(num).then(function(page) {
+        var viewport = page.getViewport({ scale: pdfScale });
+        var canvas = document.getElementById('pdf-canvas');
+        var ctx = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        page.render({ canvasContext: ctx, viewport: viewport }).promise.then(function() {
+          pdfPageNum = num;
+          document.getElementById('pdf-page-info').textContent = num + ' / ' + pdfDoc.numPages;
+          document.getElementById('pdf-prev').disabled = num <= 1;
+          document.getElementById('pdf-next').disabled = num >= pdfDoc.numPages;
+        });
+      });
+    }
+
+    function pdfPrevPage() {
+      if (pdfPageNum > 1) renderPdfPage(pdfPageNum - 1);
+    }
+
+    function pdfNextPage() {
+      if (pdfDoc && pdfPageNum < pdfDoc.numPages) renderPdfPage(pdfPageNum + 1);
+    }
+
+    function pdfZoomIn() {
+      pdfScale = Math.min(pdfScale + 0.2, 3.0);
+      document.getElementById('pdf-zoom-info').textContent = Math.round(pdfScale * 100) + '%';
+      renderPdfPage(pdfPageNum);
+    }
+
+    function pdfZoomOut() {
+      pdfScale = Math.max(pdfScale - 0.2, 0.4);
+      document.getElementById('pdf-zoom-info').textContent = Math.round(pdfScale * 100) + '%';
+      renderPdfPage(pdfPageNum);
+    }
+
+    function pdfFullscreen() {
+      var el = document.getElementById('pdf-viewer');
+      if (el.requestFullscreen) el.requestFullscreen();
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    }
+
+    // 鍵盤快捷鍵（PDF）
+    document.addEventListener('keydown', function(e) {
+      if (!pdfDoc) return;
+      if (e.key === 'ArrowLeft') pdfPrevPage();
+      else if (e.key === 'ArrowRight') pdfNextPage();
+      else if (e.key === '+' || e.key === '=') pdfZoomIn();
+      else if (e.key === '-') pdfZoomOut();
+    });
+
+    // ============================
+    // 影片播放器
+    // ============================
+    function loadVideoPlayer(fileId) {
+      document.getElementById('video-player').style.display = '';
+      var video = document.getElementById('video-element');
+
+      // 使用 Google Drive 的串流預覽連結
+      video.src = 'https://drive.google.com/uc?export=download&id=' + fileId;
+      video.load();
+
+      video.addEventListener('timeupdate', updateVideoProgress);
+      video.addEventListener('loadedmetadata', function() {
+        updateVideoTime();
+      });
+      video.addEventListener('ended', function() {
+        document.getElementById('video-play-btn').innerHTML = '<i class="fas fa-redo"></i>';
+      });
+    }
+
+    function toggleVideoPlay() {
+      var video = document.getElementById('video-element');
+      if (video.paused) {
+        video.play();
+        document.getElementById('video-play-btn').innerHTML = '<i class="fas fa-pause"></i>';
+      } else {
+        video.pause();
+        document.getElementById('video-play-btn').innerHTML = '<i class="fas fa-play"></i>';
+      }
+    }
+
+    function updateVideoProgress() {
+      var video = document.getElementById('video-element');
+      if (video.duration) {
+        var percent = (video.currentTime / video.duration) * 100;
+        document.getElementById('video-progress-fill').style.width = percent + '%';
+        updateVideoTime();
+      }
+    }
+
+    function updateVideoTime() {
+      var video = document.getElementById('video-element');
+      var current = formatTime(video.currentTime);
+      var total = formatTime(video.duration || 0);
+      document.getElementById('video-time').textContent = current + ' / ' + total;
+    }
+
+    function seekVideo(e) {
+      var video = document.getElementById('video-element');
+      var bar = document.getElementById('video-progress');
+      var rect = bar.getBoundingClientRect();
+      var percent = (e.clientX - rect.left) / rect.width;
+      video.currentTime = percent * video.duration;
+    }
+
+    function toggleMute() {
+      var video = document.getElementById('video-element');
+      video.muted = !video.muted;
+      document.getElementById('video-mute-btn').innerHTML = video.muted
+        ? '<i class="fas fa-volume-mute"></i>'
+        : '<i class="fas fa-volume-up"></i>';
+    }
+
+    function setVolume(val) {
+      document.getElementById('video-element').volume = val;
+    }
+
+    function toggleSpeedMenu() {
+      document.getElementById('speed-menu').classList.toggle('active');
+    }
+
+    function setSpeed(speed) {
+      document.getElementById('video-element').playbackRate = speed;
+      document.getElementById('speed-label').textContent = speed + 'x';
+      document.getElementById('speed-menu').classList.remove('active');
+
+      // 更新 active 狀態
+      document.querySelectorAll('#speed-menu button').forEach(function(btn) {
+        btn.classList.toggle('active', parseFloat(btn.textContent) === speed);
+      });
+    }
+
+    function videoFullscreen() {
+      var el = document.getElementById('video-player');
+      if (el.requestFullscreen) el.requestFullscreen();
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    }
+
+    function formatTime(sec) {
+      if (isNaN(sec)) return '0:00';
+      var m = Math.floor(sec / 60);
+      var s = Math.floor(sec % 60);
+      return m + ':' + (s < 10 ? '0' : '') + s;
+    }
+  </script>
+</body>
+</html>
