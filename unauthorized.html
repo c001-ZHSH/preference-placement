@@ -19,22 +19,52 @@
 <body>
   <div style="background:white; border-radius:20px; padding:48px; max-width:480px; width:90%; text-align:center; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
     <i class="fas fa-lock text-6xl text-gray-300 mb-6" style="display:block;"></i>
-    <h1 class="text-2xl font-bold text-gray-800 mb-3">需要學校帳號登入</h1>
+    <h1 class="text-2xl font-bold text-gray-800 mb-3">無法存取此平台</h1>
+
+    <!-- 顯示目前登入的帳號 -->
+    <div style="background:#fff5f5; border:1px solid #fed7d7; border-radius:12px; padding:14px; margin-bottom:20px;">
+      <p class="text-sm text-red-600">
+        <i class="fas fa-exclamation-triangle mr-1"></i>
+        目前登入的帳號不在系統名單中
+      </p>
+      <p class="text-sm text-gray-500 mt-1" id="current-email"></p>
+    </div>
+
     <p class="text-gray-500 mb-6 leading-relaxed">
-      此平台僅限本校學生使用。<br>
-      請使用學校 Google 帳號登入<br>
+      此平台僅限本校已註冊的學生及管理員使用。<br>
       <strong class="text-gray-700">（學號@mail2.chshs.ntpc.edu.tw）</strong>
     </p>
+
     <div style="background:#f7fafc; border-radius:12px; padding:16px; margin-bottom:24px;">
       <p class="text-sm text-gray-500">
         <i class="fas fa-info-circle mr-1"></i>
-        如果您已登入其他 Google 帳號，請先登出後再以學校帳號重新登入。
+        如果您是本校學生但無法登入，請聯絡管理員將您的帳號加入名單。
       </p>
     </div>
-    <a href="https://accounts.google.com" target="_blank"
-       style="display:inline-flex; align-items:center; gap:8px; background:linear-gradient(135deg,#1e3a5f,#2d5f8a); color:white; padding:12px 32px; border-radius:10px; text-decoration:none; font-weight:500;">
-      <i class="fab fa-google"></i> 前往 Google 登入
-    </a>
+
+    <!-- 切換帳號按鈕 -->
+    <div style="display:flex; flex-direction:column; gap:12px; align-items:center;">
+      <a href="https://accounts.google.com/AccountChooser" target="_top"
+         style="display:inline-flex; align-items:center; gap:8px; background:linear-gradient(135deg,#1e3a5f,#2d5f8a); color:white; padding:12px 32px; border-radius:10px; text-decoration:none; font-weight:500; width:260px; justify-content:center;">
+        <i class="fas fa-exchange-alt"></i> 切換 Google 帳號
+      </a>
+      <a href="https://accounts.google.com/Logout" target="_top"
+         style="display:inline-flex; align-items:center; gap:8px; background:#e2e8f0; color:#4a5568; padding:12px 32px; border-radius:10px; text-decoration:none; font-weight:500; width:260px; justify-content:center;">
+        <i class="fas fa-sign-out-alt"></i> 登出目前帳號
+      </a>
+    </div>
+
+    <script>
+      // 透過 Apps Script 取得目前登入的 email 並顯示
+      if (typeof google !== 'undefined' && google.script) {
+        google.script.run
+          .withSuccessHandler(function(email) {
+            var el = document.getElementById('current-email');
+            if (el && email) el.textContent = '目前帳號：' + email;
+          })
+          .getCurrentUser();
+      }
+    </script>
   </div>
 </body>
 </html>

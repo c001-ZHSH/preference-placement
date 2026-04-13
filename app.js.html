@@ -20,13 +20,18 @@ function loadCurrentUser() {
     currentUser = result;
     var displayEl = document.getElementById('user-display-name');
     if (displayEl) {
-      displayEl.textContent = result.studentId;
+      displayEl.textContent = result.name || result.studentId;
     }
-    // 顯示管理員連結
-    if (result.isAdmin) {
-      var adminLink = document.getElementById('nav-admin');
-      if (adminLink) adminLink.style.display = '';
+
+    // 根據角色顯示對應的導覽連結
+    if (result.role === 'admin') {
+      // 管理員：顯示管理後台
+      document.querySelectorAll('.nav-admin').forEach(function(el) { el.style.display = ''; });
+    } else {
+      // 學生：顯示上傳作品、我的作品
+      document.querySelectorAll('.nav-student').forEach(function(el) { el.style.display = ''; });
     }
+
     // 觸發頁面載入事件
     if (typeof onUserLoaded === 'function') {
       onUserLoaded(result);

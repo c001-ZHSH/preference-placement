@@ -12,11 +12,30 @@ function getCurrentUser() {
 }
 
 /**
- * 驗證是否為本校帳號
+ * 驗證是否為本校帳號（學生或管理員都算）
  */
 function isAuthorized(email) {
   if (!email) return false;
-  return email.toLowerCase().endsWith('@' + SCHOOL_DOMAIN);
+  // 在 students 表或 admins 表中的帳號都可以存取
+  return isStudent(email) || isAdmin(email);
+}
+
+/**
+ * 檢查是否為已註冊的學生
+ */
+function isStudent(email) {
+  if (!email) return false;
+  var ss = getSpreadsheet();
+  var studentsSheet = ss.getSheetByName('students');
+  if (!studentsSheet) return false;
+
+  var data = studentsSheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0].toString().toLowerCase() === email.toLowerCase()) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -35,6 +54,24 @@ function isAdmin(email) {
     }
   }
   return false;
+}
+
+/**
+ * 取得學生姓名（從 students 表查詢）
+ */
+function getStudentName(email) {
+  if (!email) return '';
+  var ss = getSpreadsheet();
+  var studentsSheet = ss.getSheetByName('students');
+  if (!studentsSheet) return '';
+
+  var data = studentsSheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0].toString().toLowerCase() === email.toLowerCase()) {
+      return data[i][1].toString(); // 姓名欄
+    }
+  }
+  return '';
 }
 
 /**
@@ -72,13 +109,20 @@ function isGraduated(studentId) {
 }
 
 /**
- * 取得使用者資訊
+ * 取得使用者資訊（含角色判斷）
  */
 function getUserInfo(email) {
+  var studentId = getStudentId(email);
+  var admin = isAdmin(email);
+  var student = isStudent(email);
+
   return {
     email: email,
-    studentId: getStudentId(email),
-    isAdmin: isAdmin(email),
-    enrollmentYear: getEnrollmentYear(getStudentId(email))
+    studentId: studentId,
+    name: admin ? '管理員' : getStudentName(email),
+    role: admin ? 'admin' : 'student',
+    isAdmin: admin,
+    isStudent: student,
+    enrollmentYear: student ? getEnrollmentYear(studentId) : 0
   };
 }
