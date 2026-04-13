@@ -86,20 +86,34 @@ function getWorksByGraduationYear(year) {
  * 批次刪除作品（含 Drive 檔案）
  */
 function batchDeleteWorks(workIds) {
+  if (!workIds || !workIds.length) {
+    return { deletedCount: 0, errors: ['沒有選擇要刪除的作品'] };
+  }
+
   var sheet = getWorksSheet();
   var data = sheet.getDataRange().getValues();
   var deletedCount = 0;
   var errors = [];
   var rowsToDelete = [];
 
+  // 確保 workIds 都是字串
+  var idSet = {};
+  for (var k = 0; k < workIds.length; k++) {
+    idSet[workIds[k].toString()] = true;
+  }
+
+  Logger.log('要刪除的 IDs: ' + JSON.stringify(Object.keys(idSet)));
+  Logger.log('Sheet 共有 ' + (data.length - 1) + ' 筆資料');
+
   for (var i = 1; i < data.length; i++) {
-    if (workIds.indexOf(data[i][0]) !== -1) {
-      var driveFileId = data[i][7];
-      var thumbnailId = data[i][8];
+    var rowId = data[i][0].toString();
+    if (idSet[rowId]) {
+      var driveFileId = data[i][7] ? data[i][7].toString() : '';
+      var thumbnailId = data[i][8] ? data[i][8].toString() : '';
 
       if (driveFileId) {
         try { deleteFile(driveFileId); } catch (e) {
-          errors.push('檔案刪除失敗: ' + driveFileId);
+          errors.push('檔案刪除失敗: ' + driveFileId + ' - ' + e.message);
         }
       }
       if (thumbnailId) {
@@ -111,12 +125,16 @@ function batchDeleteWorks(workIds) {
     }
   }
 
+  Logger.log('找到符合的行數: ' + deletedCount);
+
+  // 從後往前刪除行（避免行號偏移）
   rowsToDelete.sort(function (a, b) { return b - a; });
   for (var j = 0; j < rowsToDelete.length; j++) {
     sheet.deleteRow(rowsToDelete[j]);
   }
 
   clearWorksCache();
+  clearLikesCache();
   logAdminAction('批次刪除', '刪除了 ' + deletedCount + ' 筆作品');
 
   return {

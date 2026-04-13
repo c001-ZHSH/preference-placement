@@ -192,9 +192,11 @@ function createWorkCard(work) {
         '</div>' +
       '</div>';
   } else if (work.driveFileId && work.fileType === 'video') {
-    // 影片：先顯示預設圖示，再透過 API 載入縮圖
+    // 影片：縮圖 + hover 預覽
     thumbnailHtml =
-      '<div class="thumbnail ' + thumbClass + '" id="' + thumbId + '" style="position:relative;">' +
+      '<div class="thumbnail ' + thumbClass + '" id="' + thumbId + '" style="position:relative;" ' +
+           'data-file-id="' + work.driveFileId + '" ' +
+           'onmouseenter="startVideoPreview(this)" onmouseleave="stopVideoPreview(this)">' +
         '<i class="fas fa-play-circle"></i>' +
       '</div>';
   } else {
@@ -214,6 +216,7 @@ function createWorkCard(work) {
           getFileTypeBadge(work.fileType) +
           '<span class="text-xs text-gray-400">' + formatDate(work.createdAt) + '</span>' +
         '</div>' +
+        (work.category ? '<div class="text-xs text-blue-500 mb-1"><i class="fas fa-tag mr-1"></i>' + escapeHtml(work.category) + '</div>' : '') +
         '<h3 class="font-bold text-gray-800 mb-1">' + escapeHtml(truncate(work.title, 30)) + '</h3>' +
         '<p class="text-sm text-gray-500 mb-2">' + escapeHtml(truncate(work.description, 50)) + '</p>' +
         '<div class="flex items-center justify-between">' +
@@ -280,6 +283,8 @@ function fileToBase64(file, callback) {
 /**
  * 載入影片縮圖（在卡片渲染後呼叫）
  */
+var videoBlobCache = {}; // 快取影片 blob URL
+
 function loadVideoThumbnails(works) {
   works.forEach(function(work) {
     if (work.fileType === 'video' && work.driveFileId) {
@@ -288,9 +293,10 @@ function loadVideoThumbnails(works) {
         if (dataUrl) {
           var el = document.getElementById(thumbId);
           if (el) {
+            el.setAttribute('data-thumb-url', dataUrl);
             el.innerHTML =
-              '<img src="' + dataUrl + '" style="width:100%;height:100%;object-fit:cover;">' +
-              '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">' +
+              '<img src="' + dataUrl + '" style="width:100%;height:100%;object-fit:cover;" class="thumb-img">' +
+              '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;" class="play-overlay">' +
                 '<i class="fas fa-play-circle" style="font-size:3rem;color:white;opacity:0.85;text-shadow:0 2px 8px rgba(0,0,0,0.5);"></i>' +
               '</div>';
           }
@@ -298,5 +304,105 @@ function loadVideoThumbnails(works) {
       });
     }
   });
+}
+
+/**
+ * Hover 影片預覽 - 滑鼠移入時播放 2 秒
+ */
+var previewTimer = null;
+var previewLoadingId = null;
+
+function startVideoPreview(el) {
+  var fileId = el.getAttribute('data-file-id');
+  if (!fileId) return;
+
+  // 如果已有快取的 blob URL，直接播放
+  if (videoBlobCache[fileId]) {
+    showVideoInThumb(el, videoBlobCache[fileId]);
+    return;
+  }
+
+  // 沒有快取，載入影片（顯示載入提示）
+  previewLoadingId = fileId;
+  var overlay = el.querySelector('.play-overlay');
+  if (overlay) {
+    overlay.innerHTML = '<div class="spinner" style="width:30px;height:30px;border-width:3px;border-top-color:white;"></div>';
+  }
+
+  callApi('getThumbnail', { fileId: '__video__' + fileId }, function() {
+    // getThumbnail 不適合取影片，改用 getFileBase64
+  });
+
+  // 用 getFileBase64 取得影片資料
+  google.script.run
+    .withSuccessHandler(function(result) {
+      if (!result || !result.base64) return;
+      if (previewLoadingId !== fileId) return; // 已移出，取消
+
+      try {
+        var byteChars = atob(result.base64);
+        var byteArrays = [];
+        for (var offset = 0; offset < byteChars.length; offset += 512) {
+          var slice = byteChars.slice(offset, offset + 512);
+          var byteNumbers = new Array(slice.length);
+          for (var i = 0; i < slice.length; i++) {
+            byteNumbers[i] = slice.charCodeAt(i);
+          }
+          byteArrays.push(new Uint8Array(byteNumbers));
+        }
+        var blob = new Blob(byteArrays, { type: result.mimeType });
+        var blobUrl = URL.createObjectURL(blob);
+        videoBlobCache[fileId] = blobUrl;
+
+        // 確認滑鼠仍在此元素上
+        if (el.matches(':hover')) {
+          showVideoInThumb(el, blobUrl);
+        }
+      } catch (e) { /* ignore */ }
+    })
+    .withFailureHandler(function() { /* ignore */ })
+    .getFileBase64(fileId);
+}
+
+function showVideoInThumb(el, blobUrl) {
+  // 保存原始內容
+  if (!el.getAttribute('data-original-html')) {
+    el.setAttribute('data-original-html', el.innerHTML);
+  }
+
+  el.innerHTML =
+    '<video muted autoplay playsinline style="width:100%;height:100%;object-fit:cover;"' +
+    ' src="' + blobUrl + '"></video>';
+
+  var video = el.querySelector('video');
+  if (video) {
+    video.currentTime = 0;
+    video.play().catch(function() {});
+
+    // 2 秒後自動暫停並循環
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(function() {
+      if (video && !video.paused) {
+        video.currentTime = 0;
+        video.play().catch(function() {});
+      }
+    }, 2000);
+  }
+}
+
+function stopVideoPreview(el) {
+  previewLoadingId = null;
+  clearTimeout(previewTimer);
+
+  var video = el.querySelector('video');
+  if (video) {
+    video.pause();
+  }
+
+  // 恢復原始縮圖
+  var original = el.getAttribute('data-original-html');
+  if (original) {
+    el.innerHTML = original;
+  }
 }
 </script>

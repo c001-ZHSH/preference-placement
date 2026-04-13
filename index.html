@@ -35,6 +35,15 @@
       </div>
     </div>
 
+    <!-- 類別篩選 -->
+    <div class="flex items-center gap-2 mb-4 flex-wrap">
+      <span class="text-sm text-gray-500"><i class="fas fa-tags mr-1"></i>類別：</span>
+      <button class="btn-secondary cat-btn active" data-cat="" onclick="setCategory('')" style="padding:5px 14px; font-size:0.8rem;">
+        全部類別
+      </button>
+      <span id="category-buttons"></span>
+    </div>
+
     <!-- 排序列 -->
     <div class="flex items-center gap-2 mb-8">
       <span class="text-sm text-gray-500"><i class="fas fa-sort mr-1"></i>排序：</span>
@@ -81,10 +90,22 @@
     var currentSearch = '';
     var currentFilter = '';
     var currentSort = 'newest';
+    var currentCategory = '';
     var searchTimer = null;
 
     function onUserLoaded(user) {
+      loadCategories();
       loadWorks();
+    }
+
+    function loadCategories() {
+      callApi('getCategories', {}, function(cats) {
+        var container = document.getElementById('category-buttons');
+        container.innerHTML = '';
+        cats.forEach(function(cat) {
+          container.innerHTML += '<button class="btn-secondary cat-btn" data-cat="' + escapeHtml(cat.name) + '" onclick="setCategory(\'' + escapeHtml(cat.name).replace(/'/g, "\\'") + '\')" style="padding:5px 14px; font-size:0.8rem;">' + escapeHtml(cat.name) + '</button> ';
+        });
+      });
     }
 
     function loadWorks() {
@@ -98,7 +119,8 @@
         pageSize: 12,
         search: currentSearch,
         fileType: currentFilter,
-        sortBy: currentSort
+        sortBy: currentSort,
+        category: currentCategory
       }, function(result) {
         document.getElementById('loading-state').style.display = 'none';
 
@@ -201,6 +223,25 @@
       currentPage = page;
       loadWorks();
       window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function setCategory(cat) {
+      currentCategory = cat;
+      currentPage = 1;
+
+      document.querySelectorAll('.cat-btn').forEach(function(btn) {
+        if (btn.getAttribute('data-cat') === cat) {
+          btn.style.background = '#2d5f8a';
+          btn.style.color = 'white';
+          btn.classList.add('active');
+        } else {
+          btn.style.background = '#e2e8f0';
+          btn.style.color = '#4a5568';
+          btn.classList.remove('active');
+        }
+      });
+
+      loadWorks();
     }
 
     function setSort(sortBy) {

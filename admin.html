@@ -43,6 +43,13 @@
       border-left: 4px solid #38a169;
     }
 
+    .cat-item {
+      background: white; border-radius: 12px; padding: 14px 18px;
+      display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.06); transition: all 0.2s;
+    }
+    .cat-item:hover { box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+
     .batch-table {
       width: 100%;
       border-collapse: separate;
@@ -121,6 +128,31 @@
       </div>
     </div>
 
+    <!-- 類別管理 -->
+    <div style="background:white; border-radius:16px; padding:24px; box-shadow:0 2px 12px rgba(0,0,0,0.08);" class="mb-8">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-bold text-gray-800">
+          <i class="fas fa-tags mr-1 text-blue-400"></i> 成果類別管理
+        </h2>
+        <button class="btn-primary" onclick="showAddCategory()" style="padding:8px 16px; font-size:0.85rem;">
+          <i class="fas fa-plus"></i> 新增類別
+        </button>
+      </div>
+
+      <!-- 新增類別表單 -->
+      <div id="add-cat-form" style="display:none; margin-bottom:16px;">
+        <div class="flex gap-2">
+          <input type="text" class="form-input" id="new-cat-name" placeholder="輸入新類別名稱" style="flex:1;">
+          <button class="btn-primary" onclick="doAddCategory()" style="padding:8px 16px;">新增</button>
+          <button class="btn-secondary" onclick="document.getElementById('add-cat-form').style.display='none'" style="padding:8px 16px;">取消</button>
+        </div>
+      </div>
+
+      <div id="categories-list" class="flex flex-col gap-2">
+        <div class="text-center py-4 text-gray-400">載入中...</div>
+      </div>
+    </div>
+
     <!-- 批次刪除區 -->
     <div style="background:white; border-radius:16px; padding:24px; box-shadow:0 2px 12px rgba(0,0,0,0.08);">
       <div class="flex items-center justify-between mb-4">
@@ -186,6 +218,115 @@
         return;
       }
       loadStatistics();
+      loadCategories();
+    }
+
+    // ============================
+    // 類別管理
+    // ============================
+    var categoriesList = [];
+
+    function loadCategories() {
+      callApi('getCategories', {}, function(cats) {
+        categoriesList = cats;
+        renderCategories(cats);
+      });
+    }
+
+    function renderCategories(cats) {
+      var container = document.getElementById('categories-list');
+      if (cats.length === 0) {
+        container.innerHTML = '<div class="text-center py-4 text-gray-400">尚無類別，請新增</div>';
+        return;
+      }
+      container.innerHTML = '';
+      cats.forEach(function(cat) {
+        container.innerHTML += '' +
+          '<div class="cat-item" id="cat-' + cat.id + '">' +
+            '<div class="flex items-center gap-2">' +
+              '<i class="fas fa-tag text-blue-400"></i>' +
+              '<span class="font-medium text-gray-800" id="cat-name-' + cat.id + '">' + escapeHtml(cat.name) + '</span>' +
+            '</div>' +
+            '<div class="flex gap-2">' +
+              '<button class="text-gray-400 hover:text-blue-500 p-1" onclick="editCategory(\'' + cat.id + '\', \'' + escapeHtml(cat.name).replace(/'/g, "\\'") + '\')" title="編輯名稱">' +
+                '<i class="fas fa-pen text-sm"></i>' +
+              '</button>' +
+              '<button class="text-gray-400 hover:text-red-500 p-1" onclick="deleteCategoryPrompt(\'' + cat.id + '\', \'' + escapeHtml(cat.name).replace(/'/g, "\\'") + '\')" title="刪除類別">' +
+                '<i class="fas fa-trash text-sm"></i>' +
+              '</button>' +
+            '</div>' +
+          '</div>';
+      });
+    }
+
+    function showAddCategory() {
+      document.getElementById('add-cat-form').style.display = '';
+      document.getElementById('new-cat-name').value = '';
+      document.getElementById('new-cat-name').focus();
+    }
+
+    function doAddCategory() {
+      var name = document.getElementById('new-cat-name').value.trim();
+      if (!name) { alert('請輸入類別名稱'); return; }
+      showLoading('新增類別中...');
+      callApi('addCategory', { name: name }, function() {
+        hideLoading();
+        document.getElementById('add-cat-form').style.display = 'none';
+        showToast('類別已新增', 'success');
+        loadCategories();
+      }, function(err) {
+        hideLoading();
+        alert('新增失敗: ' + err);
+      });
+    }
+
+    function editCategory(catId, oldName) {
+      var newName = prompt('修改類別名稱：', oldName);
+      if (!newName || newName.trim() === '' || newName.trim() === oldName) return;
+      showLoading('修改類別中...');
+      callApi('updateCategory', { categoryId: catId, newName: newName.trim() }, function() {
+        hideLoading();
+        showToast('類別已修改，所有對應作品已同步更新', 'success');
+        loadCategories();
+      }, function(err) {
+        hideLoading();
+        alert('修改失敗: ' + err);
+      });
+    }
+
+    function deleteCategoryPrompt(catId, catName) {
+      if (categoriesList.length <= 1) {
+        alert('至少需要保留一個類別');
+        return;
+      }
+      // 讓管理者選擇替代類別
+      var options = [];
+      categoriesList.forEach(function(c) {
+        if (c.id !== catId) options.push(c.name);
+      });
+      var replacement = prompt(
+        '刪除類別「' + catName + '」\n\n' +
+        '該類別下的作品將移到哪個類別？\n' +
+        '可選擇：' + options.join('、') + '\n\n' +
+        '請輸入替代類別名稱：',
+        options[0]
+      );
+      if (!replacement) return;
+      if (options.indexOf(replacement) === -1) {
+        alert('請輸入正確的替代類別名稱');
+        return;
+      }
+      if (!confirm('確定要刪除類別「' + catName + '」？\n該類別的作品將移到「' + replacement + '」')) return;
+
+      showLoading('刪除類別中...');
+      callApi('deleteCategory', { categoryId: catId, replacementName: replacement }, function() {
+        hideLoading();
+        showToast('類別已刪除，作品已移至「' + replacement + '」', 'success');
+        loadCategories();
+      }, function(err) {
+        hideLoading();
+        alert('刪除失敗: ' + err);
+      });
     }
 
     function loadStatistics() {
@@ -339,32 +480,33 @@
 
     function batchDelete() {
       var ids = Object.keys(selectedIds);
-      if (ids.length === 0) return;
+      if (ids.length === 0) {
+        alert('請先勾選要刪除的作品');
+        return;
+      }
 
-      showConfirm(
-        '批次刪除確認',
-        '確定要刪除所選的 ' + ids.length + ' 件作品嗎？此操作會同時刪除 Google Drive 上的檔案，且無法復原。',
-        function() {
-          showLoading('批次刪除中... 請稍候');
-          callApi('batchDelete', { workIds: ids }, function(result) {
-            hideLoading();
-            showToast('成功刪除 ' + result.deletedCount + ' 件作品', 'success');
+      if (!confirm('確定要刪除所選的 ' + ids.length + ' 件作品嗎？\n此操作會同時刪除 Google Drive 上的檔案，且無法復原。')) {
+        return;
+      }
 
-            if (result.errors && result.errors.length > 0) {
-              showToast('部分檔案刪除失敗: ' + result.errors.join(', '), 'error');
-            }
+      showLoading('批次刪除中... 請稍候');
+      callApi('batchDelete', { workIds: ids }, function(result) {
+        hideLoading();
+        alert('成功刪除 ' + result.deletedCount + ' 件作品');
 
-            // 重新載入
-            selectedIds = {};
-            updateSelectedCount();
-            loadYearWorks();
-            loadStatistics();
-          }, function(err) {
-            hideLoading();
-            showToast('批次刪除失敗: ' + err, 'error');
-          });
+        if (result.errors && result.errors.length > 0) {
+          alert('部分檔案刪除失敗:\n' + result.errors.join('\n'));
         }
-      );
+
+        // 重新載入
+        selectedIds = {};
+        updateSelectedCount();
+        loadYearWorks();
+        loadStatistics();
+      }, function(err) {
+        hideLoading();
+        alert('批次刪除失敗: ' + err);
+      });
     }
   </script>
 </body>

@@ -129,7 +129,7 @@ function handleApiRequest(action, params) {
     switch (action) {
       // 作品相關
       case 'getAllWorks':
-        return { success: true, data: getAllWorksWithLikes(params.page, params.pageSize, params.search, params.fileType, params.sortBy, userEmail) };
+        return { success: true, data: getAllWorksWithLikes(params.page, params.pageSize, params.search, params.fileType, params.sortBy, userEmail, params.category) };
       case 'getWorkById':
         var work = getWorkById(params.id);
         if (work) {
@@ -156,6 +156,10 @@ function handleApiRequest(action, params) {
       case 'getThumbnail':
         return { success: true, data: getFileThumbnailBase64(params.fileId) };
 
+      // 類別
+      case 'getCategories':
+        return { success: true, data: getCategories() };
+
       // 使用者資訊
       case 'getCurrentUser':
         return { success: true, data: getUserInfo(userEmail) };
@@ -170,6 +174,17 @@ function handleApiRequest(action, params) {
       case 'batchDelete':
         if (!isAdmin(userEmail)) return { success: false, error: '需要管理員權限' };
         return { success: true, data: batchDeleteWorks(params.workIds) };
+
+      // 類別管理（管理員）
+      case 'addCategory':
+        if (!isAdmin(userEmail)) return { success: false, error: '需要管理員權限' };
+        return { success: true, data: addCategory(params.name) };
+      case 'updateCategory':
+        if (!isAdmin(userEmail)) return { success: false, error: '需要管理員權限' };
+        return { success: true, data: updateCategory(params.categoryId, params.newName) };
+      case 'deleteCategory':
+        if (!isAdmin(userEmail)) return { success: false, error: '需要管理員權限' };
+        return { success: true, data: deleteCategory(params.categoryId, params.replacementName) };
 
       default:
         return { success: false, error: '未知的操作: ' + action };
@@ -233,9 +248,29 @@ function initializeSpreadsheet() {
     worksSheet.appendRow([
       'id', 'studentId', 'studentName', 'studentEmail',
       'title', 'description', 'fileType', 'driveFileId',
-      'thumbnailId', 'createdAt', 'updatedAt'
+      'thumbnailId', 'category', 'createdAt', 'updatedAt'
     ]);
     worksSheet.setFrozenRows(1);
+  }
+
+  // 建立類別表
+  var categoriesSheet = ss.getSheetByName('categories');
+  if (!categoriesSheet) {
+    categoriesSheet = ss.insertSheet('categories');
+    categoriesSheet.appendRow(['id', 'name', 'order']);
+    categoriesSheet.setFrozenRows(1);
+    // 預設類別
+    var defaults = [
+      '書面報告與小論文',
+      '專題研究與科展作品',
+      '創意實作與藝術作品',
+      '學習心得與專書閱讀',
+      '語言與跨文化學習',
+      '服務學習與實作記錄'
+    ];
+    for (var c = 0; c < defaults.length; c++) {
+      categoriesSheet.appendRow([Utilities.getUuid(), defaults[c], c + 1]);
+    }
   }
 
   // 建立學生名單表

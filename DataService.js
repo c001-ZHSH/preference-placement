@@ -4,6 +4,7 @@
 
 var WORKS_CACHE_TTL = 120;  // 作品列表快取 2 分鐘
 var LIKES_CACHE_TTL = 120;  // 按讚資料快取 2 分鐘
+var CATEGORIES_CACHE_TTL = 300; // 類別快取 5 分鐘
 
 /**
  * 取得 Spreadsheet 物件
@@ -151,8 +152,9 @@ function getAllWorks(page, pageSize, search, fileType) {
  */
 function getWorkById(id) {
   var cached = getCachedWorks();
+  var idStr = id.toString();
   for (var i = 0; i < cached.works.length; i++) {
-    if (cached.works[i].id === id) return cached.works[i];
+    if (cached.works[i].id.toString() === idStr) return cached.works[i];
   }
   return null;
 }
@@ -191,6 +193,7 @@ function createWork(params) {
     params.fileType,
     params.driveFileId,
     params.thumbnailId || '',
+    params.category || '',
     now,
     now
   ];
@@ -214,14 +217,14 @@ function updateWork(id, params) {
       if (params.description !== undefined) sheet.getRange(rowNum, 6).setValue(params.description);
       if (params.fileType !== undefined) sheet.getRange(rowNum, 7).setValue(params.fileType);
       if (params.driveFileId !== undefined) {
-        // 刪除舊檔案
         var oldFileId = data[i][7];
         if (oldFileId && oldFileId !== params.driveFileId) {
           try { deleteFile(oldFileId); } catch (e) { /* ignore */ }
         }
         sheet.getRange(rowNum, 8).setValue(params.driveFileId);
       }
-      sheet.getRange(rowNum, 11).setValue(new Date().toISOString());
+      if (params.category !== undefined) sheet.getRange(rowNum, 10).setValue(params.category);
+      sheet.getRange(rowNum, 12).setValue(new Date().toISOString());
       clearWorksCache();
       return true;
     }
@@ -235,11 +238,13 @@ function updateWork(id, params) {
 function deleteWork(id) {
   var sheet = getWorksSheet();
   var data = sheet.getDataRange().getValues();
+  var idStr = id.toString();
 
   for (var i = 1; i < data.length; i++) {
-    if (data[i][0] === id) {
+    if (data[i][0].toString() === idStr) {
       sheet.deleteRow(i + 1);
       clearWorksCache();
+      clearLikesCache();
       return true;
     }
   }
@@ -347,12 +352,13 @@ function getBatchLikeInfo(workIds, userEmail) {
 /**
  * 取得所有作品（支援按讚數排序）
  */
-function getAllWorksWithLikes(page, pageSize, search, fileType, sortBy, userEmail) {
+function getAllWorksWithLikes(page, pageSize, search, fileType, sortBy, userEmail, category) {
   page = page || 1;
   pageSize = pageSize || 12;
   search = search ? search.toLowerCase() : '';
   fileType = fileType || '';
   sortBy = sortBy || 'newest';
+  category = category || '';
 
   var cached = getCachedWorks();
   var works = [];
@@ -366,6 +372,7 @@ function getAllWorksWithLikes(page, pageSize, search, fileType, sortBy, userEmai
     }
 
     if (fileType && work.fileType !== fileType) continue;
+    if (category && (work.category || '') !== category) continue;
 
     works.push(work);
   }
@@ -399,4 +406,110 @@ function getAllWorksWithLikes(page, pageSize, search, fileType, sortBy, userEmai
     pageSize: pageSize,
     totalPages: Math.ceil(total / pageSize)
   };
+}
+
+// ============================================
+// 類別管理
+// ============================================
+
+function getCategories() {
+  var cache = CacheService.getScriptCache();
+  var cached = cache.get('categories_list');
+  if (cached) return JSON.parse(cached);
+
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName('categories');
+  if (!sheet) return [];
+
+  var data = sheet.getDataRange().getValues();
+  var categories = [];
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0]) {
+      categories.push({ id: data[i][0].toString(), name: data[i][1].toString(), order: data[i][2] || i });
+    }
+  }
+  categories.sort(function(a, b) { return a.order - b.order; });
+  cache.put('categories_list', JSON.stringify(categories), CATEGORIES_CACHE_TTL);
+  return categories;
+}
+
+function clearCategoriesCache() {
+  CacheService.getScriptCache().remove('categories_list');
+}
+
+function addCategory(name) {
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName('categories');
+  if (!sheet) {
+    sheet = ss.insertSheet('categories');
+    sheet.appendRow(['id', 'name', 'order']);
+    sheet.setFrozenRows(1);
+  }
+  var id = generateId();
+  var data = sheet.getDataRange().getValues();
+  var maxOrder = 0;
+  for (var i = 1; i < data.length; i++) { if (data[i][2] > maxOrder) maxOrder = data[i][2]; }
+  sheet.appendRow([id, name, maxOrder + 1]);
+  clearCategoriesCache();
+  return { id: id, name: name };
+}
+
+function updateCategory(categoryId, newName) {
+  var ss = getSpreadsheet();
+  var catSheet = ss.getSheetByName('categories');
+  if (!catSheet) return false;
+  var catData = catSheet.getDataRange().getValues();
+  var oldName = '';
+  for (var i = 1; i < catData.length; i++) {
+    if (catData[i][0].toString() === categoryId) {
+      oldName = catData[i][1].toString();
+      catSheet.getRange(i + 1, 2).setValue(newName);
+      break;
+    }
+  }
+  if (!oldName) return false;
+  var worksSheet = getWorksSheet();
+  if (worksSheet) {
+    var worksData = worksSheet.getDataRange().getValues();
+    for (var j = 1; j < worksData.length; j++) {
+      if (worksData[j][9] && worksData[j][9].toString() === oldName) {
+        worksSheet.getRange(j + 1, 10).setValue(newName);
+      }
+    }
+  }
+  clearCategoriesCache();
+  clearWorksCache();
+  return true;
+}
+
+function deleteCategory(categoryId, replacementName) {
+  var ss = getSpreadsheet();
+  var catSheet = ss.getSheetByName('categories');
+  if (!catSheet) return false;
+  var catData = catSheet.getDataRange().getValues();
+  var deletedName = '';
+  var deleteRow = -1;
+  for (var i = 1; i < catData.length; i++) {
+    if (catData[i][0].toString() === categoryId) {
+      deletedName = catData[i][1].toString();
+      deleteRow = i + 1;
+      break;
+    }
+  }
+  if (!deletedName || deleteRow < 0) return false;
+  if (replacementName) {
+    var worksSheet = getWorksSheet();
+    if (worksSheet) {
+      var worksData = worksSheet.getDataRange().getValues();
+      for (var j = 1; j < worksData.length; j++) {
+        if (worksData[j][9] && worksData[j][9].toString() === deletedName) {
+          worksSheet.getRange(j + 1, 10).setValue(replacementName);
+        }
+      }
+    }
+  }
+  catSheet.deleteRow(deleteRow);
+  clearCategoriesCache();
+  clearWorksCache();
+  return true;
 }
