@@ -251,7 +251,7 @@ function initializeSpreadsheet() {
     worksSheet.appendRow([
       'id', 'studentId', 'studentName', 'studentEmail',
       'title', 'description', 'fileType', 'driveFileId',
-      'thumbnailId', 'category', 'className', 'createdAt', 'updatedAt'
+      'thumbnailId', 'category', 'createdAt', 'updatedAt', 'className'
     ]);
     worksSheet.setFrozenRows(1);
   }

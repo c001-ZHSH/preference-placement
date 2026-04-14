@@ -195,9 +195,9 @@ function createWork(params) {
     params.driveFileId,
     params.thumbnailId || '',
     params.category || '',
-    studentClass,
     now,
-    now
+    now,
+    studentClass
   ];
 
   sheet.appendRow(row);
@@ -226,7 +226,7 @@ function updateWork(id, params) {
         sheet.getRange(rowNum, 8).setValue(params.driveFileId);
       }
       if (params.category !== undefined) sheet.getRange(rowNum, 10).setValue(params.category);
-      sheet.getRange(rowNum, 13).setValue(new Date().toISOString());
+      sheet.getRange(rowNum, 12).setValue(new Date().toISOString());
       clearWorksCache();
       return true;
     }

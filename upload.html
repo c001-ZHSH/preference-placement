@@ -72,7 +72,7 @@
           <span class="bg-blue-100 text-blue-700 rounded-full w-6 h-6 inline-flex items-center justify-center text-xs mr-1">3</span>
           作品標題 <span class="text-red-500">*</span>
         </label>
-        <input type="text" id="work-title" class="form-input" placeholder="請輸入作品標題" maxlength="100">
+        <input type="text" id="work-title" class="form-input" placeholder="請輸入作品標題（最多20字）" maxlength="20">
       </div>
 
       <div class="mb-8">
@@ -81,9 +81,9 @@
           作品說明
         </label>
         <textarea id="work-description" class="form-input" rows="4"
-                  placeholder="簡單介紹你的學習成果，例如：學習動機、過程、心得..." maxlength="1000"></textarea>
+                  placeholder="簡單介紹你的學習成果（最多100字）" maxlength="100"></textarea>
         <p class="text-xs text-gray-400 mt-1 text-right">
-          <span id="desc-count">0</span> / 1000
+          <span id="desc-count">0</span> / 100
         </p>
       </div>
 
