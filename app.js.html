@@ -7,8 +7,30 @@
 var currentUser = null;
 var confirmCallback = null;
 
+// === 頁面快取（sessionStorage） ===
+function saveCache(key, data) {
+  try {
+    sessionStorage.setItem('sslp_' + key, JSON.stringify({ data: data, time: Date.now() }));
+  } catch(e) {}
+}
+
+function loadCache(key, maxAgeMs) {
+  try {
+    var raw = sessionStorage.getItem('sslp_' + key);
+    if (!raw) return null;
+    var parsed = JSON.parse(raw);
+    if (maxAgeMs && (Date.now() - parsed.time > maxAgeMs)) return null;
+    return parsed.data;
+  } catch(e) { return null; }
+}
+
 // === 初始化 ===
 document.addEventListener('DOMContentLoaded', function() {
+  // 先嘗試從快取立即套用使用者資訊（秒開導覽列）
+  var cachedUser = loadCache('user', 600000); // 10 分鐘內有效
+  if (cachedUser) {
+    applyUserInfo(cachedUser);
+  }
   loadCurrentUser();
 });
 
@@ -26,6 +48,7 @@ function loadCurrentUser() {
  */
 function applyUserInfo(user) {
   currentUser = user;
+  saveCache('user', user);
   var displayEl = document.getElementById('user-display-name');
   if (displayEl) {
     displayEl.textContent = user.name || user.studentId;

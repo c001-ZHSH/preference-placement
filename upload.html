@@ -111,15 +111,25 @@
     var selectedFile = null;
 
     // 載入類別選單
+    function fillCategorySelect(cats) {
+      var select = document.getElementById('work-category');
+      select.innerHTML = '<option value="">-- 請選擇成果類別 --</option>';
+      cats.forEach(function(cat) {
+        var opt = document.createElement('option');
+        opt.value = cat.name;
+        opt.textContent = cat.name;
+        select.appendChild(opt);
+      });
+    }
+
     function onUserLoaded(user) {
+      // 先從快取載入（秒開）
+      var cachedCats = loadCache('categories', 600000);
+      if (cachedCats) fillCategorySelect(cachedCats);
+      // 再從 API 更新
       callApi('getCategories', {}, function(cats) {
-        var select = document.getElementById('work-category');
-        cats.forEach(function(cat) {
-          var opt = document.createElement('option');
-          opt.value = cat.name;
-          opt.textContent = cat.name;
-          select.appendChild(opt);
-        });
+        saveCache('categories', cats);
+        fillCategorySelect(cats);
       });
     }
 

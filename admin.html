@@ -253,29 +253,41 @@
 
     function onUserLoaded(user) {
       if (!user.isAdmin) { showToast('您沒有管理員權限', 'error'); return; }
-      // 一次載入所有管理後台資料
+
+      // 1. 立即從快取渲染（秒開）
+      var cachedAdmin = loadCache('adminData', 120000);
+      if (cachedAdmin) {
+        applyAdminData(cachedAdmin);
+      }
+
+      // 2. 背景呼叫 API 取最新資料
       callApi('getAdminPageData', {}, function(data) {
         if (data.user) applyUserInfo(data.user);
-        // 統計
-        document.getElementById('stat-total').textContent = data.statistics.totalWorks;
-        document.getElementById('stat-students').textContent = data.statistics.totalStudents;
-        document.getElementById('stat-pdf').textContent = data.statistics.typeStats.pdf;
-        document.getElementById('stat-video').textContent = data.statistics.typeStats.video;
-        renderYearStats(data.statistics.yearStats);
-        // 年份下拉
-        var select = document.getElementById('year-select');
-        select.innerHTML = '<option value="">-- 選擇入學年份 --</option>';
-        data.statistics.yearStats.forEach(function(stat) {
-          var opt = document.createElement('option');
-          opt.value = stat.year;
-          opt.textContent = stat.label + (stat.year > 0 ? (stat.isGraduated ? ' (已畢業)' : ' (在學中)') : '') + ' - ' + stat.workCount + ' 件作品';
-          select.appendChild(opt);
-        });
-        // 類別
-        categoriesList = data.categories;
-        renderCategories(data.categories);
-        populateBulkCategories(data.categories);
+        saveCache('adminData', data);
+        applyAdminData(data);
       });
+    }
+
+    function applyAdminData(data) {
+      // 統計
+      document.getElementById('stat-total').textContent = data.statistics.totalWorks;
+      document.getElementById('stat-students').textContent = data.statistics.totalStudents;
+      document.getElementById('stat-pdf').textContent = data.statistics.typeStats.pdf;
+      document.getElementById('stat-video').textContent = data.statistics.typeStats.video;
+      renderYearStats(data.statistics.yearStats);
+      // 年份下拉
+      var select = document.getElementById('year-select');
+      select.innerHTML = '<option value="">-- 選擇入學年份 --</option>';
+      data.statistics.yearStats.forEach(function(stat) {
+        var opt = document.createElement('option');
+        opt.value = stat.year;
+        opt.textContent = stat.label + (stat.year > 0 ? (stat.isGraduated ? ' (已畢業)' : ' (在學中)') : '') + ' - ' + stat.workCount + ' 件作品';
+        select.appendChild(opt);
+      });
+      // 類別
+      categoriesList = data.categories;
+      renderCategories(data.categories);
+      populateBulkCategories(data.categories);
     }
 
     // ============================

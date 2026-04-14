@@ -97,18 +97,34 @@
     var initialLoaded = false;
 
     function onUserLoaded(user) {
-      if (!initialLoaded) {
-        // 首次載入：用合併 API 一次取回 user + categories + works
-        initialLoaded = true;
-        loadIndexPage();
+      if (initialLoaded) return;
+      initialLoaded = true;
+
+      // 1. 立即從快取渲染（秒開）
+      var cachedCats = loadCache('categories', 600000);
+      if (cachedCats && !categoriesLoaded) {
+        renderCategories(cachedCats);
+        categoriesLoaded = true;
       }
+      var cachedWorks = loadCache('indexWorks', 120000); // 2 分鐘內有效
+      if (cachedWorks) {
+        document.getElementById('loading-state').style.display = 'none';
+        handleWorksResult(cachedWorks);
+      }
+
+      // 2. 背景呼叫 API 取最新資料
+      loadIndexPage();
     }
 
     function loadIndexPage() {
-      document.getElementById('loading-state').style.display = '';
-      document.getElementById('works-grid').style.display = 'none';
-      document.getElementById('empty-state').style.display = 'none';
-      document.getElementById('pagination-container').style.display = 'none';
+      // 只有沒有快取時才顯示 loading spinner
+      var hasCachedWorks = !!loadCache('indexWorks', 120000);
+      if (!hasCachedWorks) {
+        document.getElementById('loading-state').style.display = '';
+        document.getElementById('works-grid').style.display = 'none';
+        document.getElementById('empty-state').style.display = 'none';
+        document.getElementById('pagination-container').style.display = 'none';
+      }
 
       callApi('getIndexPageData', {
         page: currentPage,
@@ -118,17 +134,19 @@
         sortBy: currentSort,
         category: currentCategory
       }, function(data) {
-        // 套用使用者資訊（首次時會更新導覽列）
         if (data.user) applyUserInfo(data.user);
-        // 類別只需渲染一次
-        if (!categoriesLoaded && data.categories) {
-          renderCategories(data.categories);
-          categoriesLoaded = true;
+        if (data.categories) {
+          saveCache('categories', data.categories);
+          if (!categoriesLoaded) {
+            renderCategories(data.categories);
+            categoriesLoaded = true;
+          }
         }
+        saveCache('indexWorks', data.works);
         handleWorksResult(data.works);
       }, function(err) {
         document.getElementById('loading-state').style.display = 'none';
-        showToast('載入失敗: ' + err, 'error');
+        if (!hasCachedWorks) showToast('載入失敗: ' + err, 'error');
       });
     }
 
