@@ -28,8 +28,9 @@
     }
     .cat-item:hover { box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
     .batch-table { width: 100%; border-collapse: separate; border-spacing: 0; }
-    .batch-table th { background: #f7fafc; padding: 12px 16px; text-align: left; font-weight: 600; font-size: 0.85rem; color: #4a5568; border-bottom: 2px solid #e2e8f0; }
-    .batch-table td { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; font-size: 0.9rem; }
+    .batch-table { width: 100%; }
+    .batch-table th { background: #f7fafc; padding: 8px 10px; text-align: left; font-weight: 600; font-size: 0.8rem; color: #4a5568; border-bottom: 2px solid #e2e8f0; white-space: nowrap; }
+    .batch-table td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; font-size: 0.85rem; white-space: nowrap; }
     .batch-table tr:hover td { background: #f7fafc; }
     .batch-table input[type="checkbox"] { width: 18px; height: 18px; accent-color: #2d5f8a; }
     .collapsible-header { cursor: pointer; user-select: none; }
@@ -158,14 +159,14 @@
           <table class="batch-table">
             <thead>
               <tr>
-                <th style="width:40px;"></th>
+                <th></th>
                 <th>學號</th>
                 <th>姓名</th>
                 <th>班級</th>
                 <th>標題</th>
                 <th>類別</th>
                 <th>類型</th>
-                <th>上傳日期</th>
+                <th>日期</th>
               </tr>
             </thead>
             <tbody id="search-table-body"></tbody>
@@ -208,7 +209,7 @@
       <div id="batch-table-container" style="display:none; overflow-x:auto;">
         <div class="mb-3"><label class="flex items-center gap-2 cursor-pointer text-sm text-gray-600"><input type="checkbox" id="select-all" onchange="toggleSelectAll(this.checked)"> 全選</label></div>
         <table class="batch-table">
-          <thead><tr><th style="width:40px;"></th><th>學號</th><th>姓名</th><th>標題</th><th>類別</th><th>類型</th><th>上傳日期</th></tr></thead>
+          <thead><tr><th></th><th>學號</th><th>姓名</th><th>班級</th><th>標題</th><th>類別</th><th>類型</th><th>日期</th></tr></thead>
           <tbody id="batch-table-body"></tbody>
         </table>
       </div>
@@ -252,9 +253,29 @@
 
     function onUserLoaded(user) {
       if (!user.isAdmin) { showToast('您沒有管理員權限', 'error'); return; }
-      loadStatistics();
-      loadCategories();
-      loadBulkCategories();
+      // 一次載入所有管理後台資料
+      callApi('getAdminPageData', {}, function(data) {
+        if (data.user) applyUserInfo(data.user);
+        // 統計
+        document.getElementById('stat-total').textContent = data.statistics.totalWorks;
+        document.getElementById('stat-students').textContent = data.statistics.totalStudents;
+        document.getElementById('stat-pdf').textContent = data.statistics.typeStats.pdf;
+        document.getElementById('stat-video').textContent = data.statistics.typeStats.video;
+        renderYearStats(data.statistics.yearStats);
+        // 年份下拉
+        var select = document.getElementById('year-select');
+        select.innerHTML = '<option value="">-- 選擇入學年份 --</option>';
+        data.statistics.yearStats.forEach(function(stat) {
+          var opt = document.createElement('option');
+          opt.value = stat.year;
+          opt.textContent = stat.label + (stat.year > 0 ? (stat.isGraduated ? ' (已畢業)' : ' (在學中)') : '') + ' - ' + stat.workCount + ' 件作品';
+          select.appendChild(opt);
+        });
+        // 類別
+        categoriesList = data.categories;
+        renderCategories(data.categories);
+        populateBulkCategories(data.categories);
+      });
     }
 
     // ============================
@@ -262,16 +283,14 @@
     // ============================
     var bulkQueue = []; // { file, category, title, desc }
 
-    function loadBulkCategories() {
-      callApi('getCategories', {}, function(cats) {
-        var select = document.getElementById('bulk-add-category');
-        select.innerHTML = '<option value="">-- 選擇 --</option>';
-        cats.forEach(function(cat) {
-          var opt = document.createElement('option');
-          opt.value = cat.name;
-          opt.textContent = cat.name;
-          select.appendChild(opt);
-        });
+    function populateBulkCategories(cats) {
+      var select = document.getElementById('bulk-add-category');
+      select.innerHTML = '<option value="">-- 選擇 --</option>';
+      cats.forEach(function(cat) {
+        var opt = document.createElement('option');
+        opt.value = cat.name;
+        opt.textContent = cat.name;
+        select.appendChild(opt);
       });
     }
 

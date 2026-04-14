@@ -17,26 +17,29 @@ document.addEventListener('DOMContentLoaded', function() {
  */
 function loadCurrentUser() {
   callApi('getCurrentUser', {}, function(result) {
-    currentUser = result;
-    var displayEl = document.getElementById('user-display-name');
-    if (displayEl) {
-      displayEl.textContent = result.name || result.studentId;
-    }
-
-    // 根據角色顯示對應的導覽連結
-    if (result.role === 'admin') {
-      // 管理員：顯示管理後台
-      document.querySelectorAll('.nav-admin').forEach(function(el) { el.style.display = ''; });
-    } else {
-      // 學生：顯示上傳作品、我的作品
-      document.querySelectorAll('.nav-student').forEach(function(el) { el.style.display = ''; });
-    }
-
-    // 觸發頁面載入事件
-    if (typeof onUserLoaded === 'function') {
-      onUserLoaded(result);
-    }
+    applyUserInfo(result);
   });
+}
+
+/**
+ * 套用使用者資訊到 UI（可被合併 API 直接呼叫）
+ */
+function applyUserInfo(user) {
+  currentUser = user;
+  var displayEl = document.getElementById('user-display-name');
+  if (displayEl) {
+    displayEl.textContent = user.name || user.studentId;
+  }
+
+  if (user.role === 'admin') {
+    document.querySelectorAll('.nav-admin').forEach(function(el) { el.style.display = ''; });
+  } else {
+    document.querySelectorAll('.nav-student').forEach(function(el) { el.style.display = ''; });
+  }
+
+  if (typeof onUserLoaded === 'function') {
+    onUserLoaded(user);
+  }
 }
 
 /**
@@ -120,7 +123,9 @@ function hideLoading() {
 function formatDate(dateStr) {
   if (!dateStr) return '';
   var d = new Date(dateStr);
-  var year = d.getFullYear() - 1911; // 轉民國年
+  if (isNaN(d.getTime())) return '';
+  var year = d.getFullYear() - 1911;
+  if (year < 1 || year > 200) return '';
   var month = (d.getMonth() + 1);
   var day = d.getDate();
   return year + '/' + (month < 10 ? '0' : '') + month + '/' + (day < 10 ? '0' : '') + day;
@@ -161,7 +166,8 @@ function getFileTypeBadge(fileType) {
  * 截斷文字
  */
 function truncate(str, maxLen) {
-  if (!str) return '';
+  if (!str && str !== 0) return '';
+  str = str.toString();
   if (str.length <= maxLen) return str;
   return str.substring(0, maxLen) + '...';
 }
@@ -236,8 +242,8 @@ function createWorkCard(work) {
  * HTML 跳脫（防 XSS）
  */
 function escapeHtml(str) {
-  if (!str) return '';
-  return str.toString()
+  if (!str && str !== 0) return '';
+  return ('' + str)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')

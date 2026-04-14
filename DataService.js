@@ -54,9 +54,21 @@ function getCachedWorks() {
     works.push(rowToWork(headers, data[i]));
   }
 
+  // 從 students 表補充班級資訊（確保舊作品也有班級）
+  var studentsList = getStudentsList();
+  var classMap = {};
+  for (var s = 0; s < studentsList.length; s++) {
+    classMap[studentsList[s].email] = studentsList[s].className || '';
+  }
+  for (var w = 0; w < works.length; w++) {
+    var email = (works[w].studentEmail || '').toString().toLowerCase();
+    if (!works[w].className && email && classMap[email]) {
+      works[w].className = classMap[email];
+    }
+  }
+
   var result = { headers: headers, works: works };
 
-  // CacheService 單一值上限 100KB，分段儲存如果太大
   var json = JSON.stringify(result);
   if (json.length < 90000) {
     cache.put('all_works', json, WORKS_CACHE_TTL);
@@ -258,8 +270,11 @@ function deleteWork(id) {
  */
 function rowToWork(headers, row) {
   var work = {};
+  var textFields = { id:1, studentId:1, studentName:1, studentEmail:1, title:1, description:1, fileType:1, driveFileId:1, thumbnailId:1, category:1, className:1 };
   for (var j = 0; j < headers.length; j++) {
-    work[headers[j]] = row[j];
+    var key = headers[j];
+    var val = row[j];
+    work[key] = (key && textFields[key] && val !== undefined && val !== null) ? val.toString() : val;
   }
   return work;
 }

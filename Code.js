@@ -164,6 +164,23 @@ function handleApiRequest(action, params) {
       case 'getCurrentUser':
         return { success: true, data: getUserInfo(userEmail) };
 
+      // 首頁一次載入（合併 user + categories + works）
+      case 'getIndexPageData':
+        return { success: true, data: {
+          user: getUserInfo(userEmail),
+          categories: getCategories(),
+          works: getAllWorksWithLikes(params.page, params.pageSize, params.search, params.fileType, params.sortBy, userEmail, params.category)
+        }};
+
+      // 管理後台一次載入
+      case 'getAdminPageData':
+        if (!isAdmin(userEmail)) return { success: false, error: '需要管理員權限' };
+        return { success: true, data: {
+          user: getUserInfo(userEmail),
+          categories: getCategories(),
+          statistics: getStatistics()
+        }};
+
       // 管理員功能
       case 'searchWorks':
         if (!isAdmin(userEmail)) return { success: false, error: '需要管理員權限' };
