@@ -59,6 +59,55 @@
       <div class="stat-card"><div class="stat-number" id="stat-video">-</div><p class="text-sm text-gray-500 mt-1">影片檔案</p></div>
     </div>
 
+    <!-- ==================== Drive 資料夾遷移 ==================== -->
+    <div class="admin-section">
+      <div class="collapsible-header flex items-center justify-between" onclick="toggleCollapse('migrate-body', 'migrate-arrow')">
+        <h2 class="text-lg font-bold text-gray-800">
+          <i class="fas fa-folder-tree mr-1 text-purple-500"></i> Drive 資料夾遷移
+        </h2>
+        <i class="fas fa-chevron-down text-gray-400" id="migrate-arrow" style="transition:transform 0.3s;"></i>
+      </div>
+      <div class="collapsible-body collapsed" id="migrate-body" style="max-height:0;">
+        <div class="mt-4">
+          <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:12px 16px; margin-bottom:16px;">
+            <p class="text-sm text-yellow-800">
+              <i class="fas fa-info-circle mr-1"></i>
+              此工具會將所有作品檔案移動到指定的新資料夾（同一個 Google 帳號內）。<br>
+              檔案的 ID 保持不變，所以現有作品的連結都能繼續運作。
+            </p>
+          </div>
+
+          <div class="mb-3">
+            <label class="block text-sm font-bold text-gray-700 mb-1">新資料夾 ID</label>
+            <div class="flex gap-2">
+              <input type="text" id="migrate-folder-id" class="form-input" placeholder="貼上新資料夾的 Google Drive ID" style="flex:1; padding:8px; font-size:0.85rem;">
+              <button class="btn-secondary" onclick="validateMigration()" style="padding:8px 16px; font-size:0.85rem;">
+                <i class="fas fa-check mr-1"></i> 檢查
+              </button>
+            </div>
+            <p class="text-xs text-gray-400 mt-1">資料夾 URL：drive.google.com/drive/folders/<strong>這段就是 ID</strong></p>
+          </div>
+
+          <div id="migrate-info" style="display:none; background:#f0fdf4; border:1px solid #86efac; border-radius:10px; padding:12px 16px; margin-bottom:12px;">
+            <p class="text-sm text-green-800" id="migrate-info-text"></p>
+          </div>
+
+          <div id="migrate-progress" style="display:none; margin-bottom:12px;">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-sm font-medium" id="migrate-status">遷移中...</span>
+              <span class="text-sm text-gray-500" id="migrate-count">0 / 0</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" id="migrate-fill" style="width:0%"></div></div>
+            <div id="migrate-log" class="mt-2 text-xs text-gray-500 max-h-32 overflow-y-auto"></div>
+          </div>
+
+          <button class="btn-primary" id="migrate-btn" onclick="startMigration()" disabled>
+            <i class="fas fa-rocket mr-1"></i> 開始遷移
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- ==================== 系統設定 ==================== -->
     <div class="admin-section">
       <div class="collapsible-header flex items-center justify-between" onclick="toggleCollapse('settings-body', 'settings-arrow')">
@@ -334,6 +383,100 @@
     // 批次上傳（逐筆新增 → 一鍵上傳）
     // ============================
     var bulkQueue = []; // { file, category, title, desc }
+
+    // ============================
+    // Drive 資料夾遷移
+    // ============================
+    var migrateVerified = null;
+
+    function validateMigration() {
+      var folderId = document.getElementById('migrate-folder-id').value.trim();
+      if (!folderId) { alert('請輸入資料夾 ID'); return; }
+
+      showLoading('檢查資料夾中...');
+      callApi('validateMigration', { newFolderId: folderId }, function(info) {
+        hideLoading();
+        migrateVerified = { folderId: folderId, folderName: info.folderName, totalFiles: info.totalFiles };
+        document.getElementById('migrate-info').style.display = '';
+        document.getElementById('migrate-info-text').innerHTML =
+          '✓ 目標資料夾：<strong>' + escapeHtml(info.folderName) + '</strong><br>' +
+          '✓ 將遷移 <strong>' + info.totalFiles + '</strong> 個檔案';
+        document.getElementById('migrate-btn').disabled = false;
+      }, function(err) {
+        hideLoading();
+        migrateVerified = null;
+        document.getElementById('migrate-info').style.display = 'none';
+        document.getElementById('migrate-btn').disabled = true;
+        alert('檢查失敗：' + err);
+      });
+    }
+
+    function startMigration() {
+      if (!migrateVerified) { alert('請先檢查資料夾'); return; }
+      var total = migrateVerified.totalFiles;
+
+      if (total === 0) {
+        if (!confirm('沒有檔案需要遷移，仍要更新設定讓新上傳指向此資料夾嗎？')) return;
+      } else {
+        if (!confirm('確定要將 ' + total + ' 個檔案遷移到「' + migrateVerified.folderName + '」？\n此操作會逐一移動檔案，完成後系統設定也會自動更新。')) return;
+      }
+
+      document.getElementById('migrate-btn').disabled = true;
+      document.getElementById('migrate-btn').innerHTML = '<div class="spinner" style="width:16px;height:16px;border-width:2px;display:inline-block;"></div> 遷移中...';
+      document.getElementById('migrate-progress').style.display = '';
+      document.getElementById('migrate-log').innerHTML = '';
+
+      var totalMoved = 0;
+      var totalFailed = 0;
+      var allErrors = [];
+
+      function runBatch(startIndex) {
+        document.getElementById('migrate-status').textContent = '遷移中...（第 ' + (startIndex + 1) + ' 個起）';
+
+        callApi('migrateDriveFolder', {
+          newFolderId: migrateVerified.folderId,
+          startIndex: startIndex
+        }, function(result) {
+          totalMoved += result.moved;
+          totalFailed += result.failed;
+          if (result.errors && result.errors.length) allErrors = allErrors.concat(result.errors);
+
+          var pct = result.total > 0 ? Math.round((result.processed / result.total) * 100) : 100;
+          document.getElementById('migrate-fill').style.width = pct + '%';
+          document.getElementById('migrate-count').textContent = result.processed + ' / ' + result.total;
+
+          var log = document.getElementById('migrate-log');
+          log.innerHTML += '<div class="text-green-600">本批次完成：成功 ' + result.moved + '、失敗 ' + result.failed + '</div>';
+          log.scrollTop = log.scrollHeight;
+
+          if (!result.done) {
+            // 還沒處理完，繼續下一批
+            setTimeout(function() { runBatch(result.nextIndex); }, 1000);
+          } else {
+            // 完成
+            document.getElementById('migrate-status').textContent = '✓ 遷移完成！';
+            document.getElementById('migrate-fill').style.width = '100%';
+            document.getElementById('migrate-btn').disabled = false;
+            document.getElementById('migrate-btn').innerHTML = '<i class="fas fa-rocket mr-1"></i> 開始遷移';
+
+            var msg = '遷移完成！\n成功：' + totalMoved + ' 個\n失敗：' + totalFailed + ' 個';
+            if (allErrors.length > 0) msg += '\n\n錯誤詳情（前 20 筆）：\n' + allErrors.slice(0, 20).join('\n');
+            if (result.total > 0) msg += '\n\n系統設定已更新，新上傳將儲存至新資料夾。';
+            alert(msg);
+
+            migrateVerified = null;
+            document.getElementById('migrate-folder-id').value = '';
+            document.getElementById('migrate-info').style.display = 'none';
+          }
+        }, function(err) {
+          document.getElementById('migrate-btn').disabled = false;
+          document.getElementById('migrate-btn').innerHTML = '<i class="fas fa-rocket mr-1"></i> 開始遷移';
+          alert('遷移失敗：' + err);
+        });
+      }
+
+      runBatch(0);
+    }
 
     // ============================
     // 系統設定

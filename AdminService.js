@@ -163,3 +163,100 @@ function logAdminAction(action, detail) {
   var email = Session.getActiveUser().getEmail();
   logSheet.appendRow([new Date().toISOString(), email, action, detail]);
 }
+
+// ============================================
+// Drive 資料夾遷移
+// ============================================
+
+/**
+ * 檢查新資料夾是否可存取
+ */
+function validateMigrationTarget(newFolderId) {
+  if (!newFolderId) return { ok: false, error: '請提供新資料夾 ID' };
+  try {
+    var folder = DriveApp.getFolderById(newFolderId);
+    return { ok: true, folderName: folder.getName() };
+  } catch (e) {
+    return { ok: false, error: '無法存取該資料夾，請確認 ID 正確且擁有者有存取權限' };
+  }
+}
+
+/**
+ * 收集所有需要遷移的檔案 ID（含證明文件、影音、縮圖、舊主檔）
+ */
+function collectAllFileIds() {
+  var cached = getCachedWorks();
+  var set = {};
+  for (var i = 0; i < cached.works.length; i++) {
+    var w = cached.works[i];
+    ['proofFileId', 'videoFileId', 'driveFileId', 'thumbnailId'].forEach(function(k) {
+      var id = w[k];
+      if (id && id.toString().trim()) set[id.toString().trim()] = true;
+    });
+  }
+  return Object.keys(set);
+}
+
+/**
+ * 遷移 Drive 檔案到新資料夾
+ * @param {string} newFolderId - 新資料夾 ID
+ * @param {number} startIndex - 從第幾個檔案開始（支援分批）
+ * @returns {Object} 進度資訊
+ */
+function migrateDriveFolder(newFolderId, startIndex) {
+  startIndex = startIndex || 0;
+
+  var check = validateMigrationTarget(newFolderId);
+  if (!check.ok) return { success: false, error: check.error };
+
+  var newFolder = DriveApp.getFolderById(newFolderId);
+  var allIds = collectAllFileIds();
+  var total = allIds.length;
+
+  if (total === 0) {
+    // 沒有檔案可遷移，直接更新設定
+    PropertiesService.getScriptProperties().setProperty('DRIVE_FOLDER_ID', newFolderId);
+    return { success: true, moved: 0, failed: 0, total: 0, done: true, folderName: check.folderName };
+  }
+
+  var moved = 0;
+  var failed = 0;
+  var errors = [];
+  var startTime = Date.now();
+  var TIMEOUT = 4 * 60 * 1000; // 4 分鐘後返回（留 2 分鐘緩衝）
+  var i = startIndex;
+
+  for (; i < total; i++) {
+    if (Date.now() - startTime > TIMEOUT) break;
+
+    try {
+      var file = DriveApp.getFileById(allIds[i]);
+      file.moveTo(newFolder);
+      moved++;
+    } catch (e) {
+      failed++;
+      if (errors.length < 20) errors.push(allIds[i] + ': ' + e.message);
+    }
+  }
+
+  var nextIndex = i;
+  var done = nextIndex >= total;
+
+  // 全部完成時才更新 DRIVE_FOLDER_ID
+  if (done) {
+    PropertiesService.getScriptProperties().setProperty('DRIVE_FOLDER_ID', newFolderId);
+    logAdminAction('Drive 遷移完成', '已遷移 ' + moved + ' 個檔案到資料夾 ' + newFolderId);
+  }
+
+  return {
+    success: true,
+    moved: moved,
+    failed: failed,
+    total: total,
+    processed: nextIndex,
+    nextIndex: nextIndex,
+    done: done,
+    errors: errors,
+    folderName: check.folderName
+  };
+}

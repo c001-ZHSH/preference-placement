@@ -178,6 +178,16 @@ function handleApiRequest(action, params) {
         if (!isAdmin(userEmail)) return { success: false, error: '需要管理員權限' };
         return { success: true, data: updateSettings(params.settings) };
 
+      // Drive 資料夾遷移
+      case 'validateMigration':
+        if (!isAdmin(userEmail)) return { success: false, error: '需要管理員權限' };
+        var info = validateMigrationTarget(params.newFolderId);
+        if (!info.ok) return { success: false, error: info.error };
+        return { success: true, data: { folderName: info.folderName, totalFiles: collectAllFileIds().length } };
+      case 'migrateDriveFolder':
+        if (!isAdmin(userEmail)) return { success: false, error: '需要管理員權限' };
+        return { success: true, data: migrateDriveFolder(params.newFolderId, params.startIndex) };
+
       // 使用者資訊（含上傳狀態）
       case 'getCurrentUser':
         return { success: true, data: getUserInfoWithLimit(userEmail) };
