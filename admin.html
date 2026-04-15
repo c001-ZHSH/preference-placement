@@ -155,26 +155,53 @@
           <!-- 新增一筆的表單 -->
           <div style="background:#f7fafc; border-radius:12px; padding:16px; margin-bottom:16px;">
             <p class="text-sm font-bold text-gray-700 mb-3"><i class="fas fa-plus-circle mr-1 text-blue-400"></i> 新增一筆作品</p>
+
+            <!-- 基本資訊 -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-              <div>
-                <label class="block text-xs text-gray-500 mb-1">檔案 <span class="text-red-500">*</span></label>
-                <input type="file" id="bulk-add-file" accept=".pdf,.mp4,.mov,.webm,.avi" class="form-input" style="padding:6px; font-size:0.85rem;">
-              </div>
               <div>
                 <label class="block text-xs text-gray-500 mb-1">類別 <span class="text-red-500">*</span></label>
                 <select id="bulk-add-category" class="form-input" style="padding:8px; font-size:0.85rem;"></select>
               </div>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
               <div>
                 <label class="block text-xs text-gray-500 mb-1">標題 <span class="text-red-500">*</span>（20字內）</label>
                 <input type="text" id="bulk-add-title" class="form-input" maxlength="20" placeholder="作品標題" style="padding:8px; font-size:0.85rem;">
               </div>
-              <div>
-                <label class="block text-xs text-gray-500 mb-1">學習說明（100字內）</label>
-                <input type="text" id="bulk-add-desc" class="form-input" maxlength="100" placeholder="簡短說明" style="padding:8px; font-size:0.85rem;">
-              </div>
             </div>
+            <div class="mb-3">
+              <label class="block text-xs text-gray-500 mb-1">學習說明（100字內）</label>
+              <input type="text" id="bulk-add-desc" class="form-input" maxlength="100" placeholder="簡短說明" style="padding:8px; font-size:0.85rem;">
+            </div>
+
+            <!-- 附件（與單筆上傳相同） -->
+            <p class="text-xs text-gray-500 mb-2">附件（至少需上傳證明文件或影音檔案其中一種）</p>
+
+            <div style="background:white; border:1px solid #e2e8f0; border-radius:8px; padding:10px; margin-bottom:8px;">
+              <div class="flex items-center gap-2 mb-1">
+                <i class="fas fa-file-alt text-red-500"></i>
+                <span class="text-sm font-medium">證明文件</span>
+                <span class="text-xs text-gray-400">PDF / JPG / PNG，最大 <span id="bulk-max-doc-size">4</span>MB</span>
+              </div>
+              <input type="file" id="bulk-add-proof" accept=".pdf,.jpg,.jpeg,.png" style="font-size:0.8rem; width:100%;">
+            </div>
+
+            <div style="background:white; border:1px solid #e2e8f0; border-radius:8px; padding:10px; margin-bottom:8px;">
+              <div class="flex items-center gap-2 mb-1">
+                <i class="fas fa-video text-purple-500"></i>
+                <span class="text-sm font-medium">影音檔案</span>
+                <span class="text-xs text-gray-400">MP3 / MP4，最大 <span id="bulk-max-video-size">10</span>MB</span>
+              </div>
+              <input type="file" id="bulk-add-video" accept=".mp3,.mp4" style="font-size:0.8rem; width:100%;">
+            </div>
+
+            <div style="background:white; border:1px solid #e2e8f0; border-radius:8px; padding:10px; margin-bottom:12px;">
+              <div class="flex items-center gap-2 mb-1">
+                <i class="fas fa-link text-blue-500"></i>
+                <span class="text-sm font-medium">影音外部連結</span>
+                <span class="text-xs text-gray-400">（選填）</span>
+              </div>
+              <input type="url" id="bulk-add-external" placeholder="https://..." class="form-input" style="padding:6px; font-size:0.85rem;">
+            </div>
+
             <button class="btn-secondary" onclick="addBulkItem()" style="padding:6px 16px; font-size:0.85rem;">
               <i class="fas fa-plus mr-1"></i> 加入待上傳清單
             </button>
@@ -377,6 +404,14 @@
       categoriesList = data.categories;
       renderCategories(data.categories);
       populateBulkCategories(data.categories);
+      // 同步批次上傳的檔案大小上限顯示
+      if (data.settings) {
+        saveCache('settings', data.settings);
+        var d = document.getElementById('bulk-max-doc-size');
+        var v = document.getElementById('bulk-max-video-size');
+        if (d) d.textContent = data.settings.maxDocSize;
+        if (v) v.textContent = data.settings.maxVideoSize;
+      }
     }
 
     // ============================
@@ -520,29 +555,74 @@
       });
     }
 
+    // 從後端設定讀取大小上限（每次新增時查）
+    var bulkSettings = { maxDocSize: 4, maxVideoSize: 10 };
+    function syncBulkSettings() {
+      var s = loadCache('settings', 600000);
+      if (s) {
+        bulkSettings = s;
+        var d = document.getElementById('bulk-max-doc-size');
+        var v = document.getElementById('bulk-max-video-size');
+        if (d) d.textContent = s.maxDocSize;
+        if (v) v.textContent = s.maxVideoSize;
+      }
+    }
+
+    function validateAttachBatch(file, type) {
+      if (!file) return { ok: true };
+      // 類型驗證
+      var allowed = type === 'proof'
+        ? ['application/pdf', 'image/jpeg', 'image/png']
+        : ['audio/mpeg', 'video/mp4'];
+      var ext = file.name.toLowerCase().split('.').pop();
+      var extAllowed = type === 'proof' ? ['pdf','jpg','jpeg','png'] : ['mp3','mp4'];
+      var ok = allowed.indexOf(file.type) !== -1 || extAllowed.indexOf(ext) !== -1;
+      if (!ok) {
+        return { ok: false, error: type === 'proof' ? '證明文件只能是 PDF / JPG / PNG' : '影音檔案只能是 MP3 / MP4' };
+      }
+      // 大小驗證
+      var maxSize = (type === 'proof' ? bulkSettings.maxDocSize : bulkSettings.maxVideoSize) * 1024 * 1024;
+      if (file.size > maxSize) {
+        return { ok: false, error: (type === 'proof' ? '證明文件' : '影音檔案') + '超過 ' + (type === 'proof' ? bulkSettings.maxDocSize : bulkSettings.maxVideoSize) + 'MB 限制' };
+      }
+      return { ok: true };
+    }
+
     function addBulkItem() {
-      var fileInput = document.getElementById('bulk-add-file');
+      syncBulkSettings();
+
       var category = document.getElementById('bulk-add-category').value;
       var title = document.getElementById('bulk-add-title').value.trim();
       var desc = document.getElementById('bulk-add-desc').value.trim();
+      var proofInput = document.getElementById('bulk-add-proof');
+      var videoInput = document.getElementById('bulk-add-video');
+      var external = document.getElementById('bulk-add-external').value.trim();
 
-      if (!fileInput.files || !fileInput.files[0]) { alert('請選擇檔案'); return; }
+      var proofFile = proofInput.files && proofInput.files[0] ? proofInput.files[0] : null;
+      var videoFile = videoInput.files && videoInput.files[0] ? videoInput.files[0] : null;
+
       if (!category) { alert('請選擇類別'); return; }
       if (!title) { alert('請輸入標題'); return; }
+      if (!proofFile && !videoFile) { alert('請至少上傳證明文件或影音檔案其中一種'); return; }
 
-      var file = fileInput.files[0];
-      if (file.size > 50 * 1024 * 1024) { alert('檔案大小超過 50MB 限制'); return; }
+      var v1 = validateAttachBatch(proofFile, 'proof');
+      if (!v1.ok) { alert(v1.error); return; }
+      var v2 = validateAttachBatch(videoFile, 'video');
+      if (!v2.ok) { alert(v2.error); return; }
 
-      bulkQueue.push({ file: file, category: category, title: title, desc: desc });
+      bulkQueue.push({
+        proofFile: proofFile, videoFile: videoFile, externalLink: external,
+        category: category, title: title, desc: desc
+      });
       renderBulkQueue();
 
-      // 清空表單以便新增下一筆
-      fileInput.value = '';
+      // 清空表單以便新增下一筆（類別保留）
       document.getElementById('bulk-add-title').value = '';
       document.getElementById('bulk-add-desc').value = '';
-      // 類別保持不變，方便連續新增同類別作品
+      document.getElementById('bulk-add-external').value = '';
+      proofInput.value = '';
+      videoInput.value = '';
 
-      // 更新收折區高度
       var body = document.getElementById('batch-upload-body');
       if (!body.classList.contains('collapsed')) body.style.maxHeight = body.scrollHeight + 200 + 'px';
     }
@@ -560,19 +640,25 @@
 
       list.innerHTML = '';
       bulkQueue.forEach(function(item, idx) {
-        var icon = item.file.type === 'application/pdf' ? 'fa-file-pdf text-red-500' : 'fa-video text-purple-500';
-        var size = item.file.size < 1024*1024 ? (item.file.size/1024).toFixed(1) + ' KB' : (item.file.size/(1024*1024)).toFixed(1) + ' MB';
+        var badges = '';
+        if (item.proofFile) badges += '<span title="證明文件" style="color:#dc2626; margin-right:6px;"><i class="fas fa-file-alt"></i></span>';
+        if (item.videoFile) badges += '<span title="影音檔案" style="color:#8b5cf6; margin-right:6px;"><i class="fas fa-video"></i></span>';
+        if (item.externalLink) badges += '<span title="外部連結" style="color:#3b82f6;"><i class="fas fa-link"></i></span>';
+
+        var proofInfo = item.proofFile ? (item.proofFile.name + '、') : '';
+        var videoInfo = item.videoFile ? item.videoFile.name : '';
+        var fileInfo = (proofInfo + videoInfo).replace(/、$/, '');
+
         list.innerHTML +=
           '<div style="background:white; border:1px solid #e2e8f0; border-radius:10px; padding:10px 14px; display:flex; align-items:center; justify-content:space-between;">' +
             '<div style="flex:1; min-width:0;">' +
               '<div class="flex items-center gap-2 mb-1">' +
-                '<i class="fas ' + icon + '"></i>' +
+                '<span>' + badges + '</span>' +
                 '<span class="font-medium text-gray-800 text-sm" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + escapeHtml(item.title) + '</span>' +
-                '<span class="text-xs text-gray-400">(' + size + ')</span>' +
               '</div>' +
               '<div class="text-xs text-gray-500">' +
                 '<span class="text-blue-500"><i class="fas fa-tag mr-1"></i>' + escapeHtml(item.category) + '</span>' +
-                (item.desc ? '<span class="ml-2">' + escapeHtml(truncate(item.desc, 30)) + '</span>' : '') +
+                (fileInfo ? '<span class="ml-2">' + escapeHtml(truncate(fileInfo, 40)) + '</span>' : '') +
               '</div>' +
             '</div>' +
             '<button onclick="removeBulkItem(' + idx + ')" class="text-gray-400 hover:text-red-500 ml-3" style="background:none; border:none; cursor:pointer;" title="移除">' +
@@ -626,43 +712,64 @@
         }
 
         var item = bulkQueue[index];
-        var fileType = item.file.type === 'application/pdf' ? 'pdf' : 'video';
 
         document.getElementById('bulk-status').textContent = '上傳中：' + item.title;
         document.getElementById('bulk-count').textContent = (index + 1) + ' / ' + total;
         document.getElementById('bulk-fill').style.width = ((index / total) * 100) + '%';
 
-        fileToBase64(item.file, function(base64) {
-          callApi('uploadFile', {
-            base64: base64,
-            fileName: item.file.name,
-            mimeType: item.file.type
-          }, function(fileResult) {
-            callApi('createWork', {
-              title: item.title,
-              studentName: '管理員',
-              description: item.desc,
-              fileType: fileType,
-              driveFileId: fileResult.fileId,
-              category: item.category
-            }, function() {
-              done++;
-              log.innerHTML += '<div class="text-green-600">✓ ' + escapeHtml(item.title) + '</div>';
-              log.scrollTop = log.scrollHeight;
-              uploadNext(index + 1);
-            }, function(err) {
-              errors.push(item.title);
-              log.innerHTML += '<div class="text-red-500">✗ ' + escapeHtml(item.title) + '：' + err + '</div>';
-              log.scrollTop = log.scrollHeight;
-              uploadNext(index + 1);
-            });
-          }, function(err) {
-            errors.push(item.title);
-            log.innerHTML += '<div class="text-red-500">✗ ' + escapeHtml(item.title) + '：檔案上傳失敗</div>';
+        var uploaded = { proofFileId: '', proofMimeType: '', videoFileId: '', videoMimeType: '' };
+
+        function failItem(msg) {
+          errors.push(item.title);
+          log.innerHTML += '<div class="text-red-500">✗ ' + escapeHtml(item.title) + '：' + msg + '</div>';
+          log.scrollTop = log.scrollHeight;
+          uploadNext(index + 1);
+        }
+
+        function uploadProof(next) {
+          if (!item.proofFile) return next();
+          fileToBase64(item.proofFile, function(b64) {
+            callApi('uploadFile', { base64: b64, fileName: item.proofFile.name, mimeType: item.proofFile.type }, function(r) {
+              uploaded.proofFileId = r.fileId;
+              uploaded.proofMimeType = item.proofFile.type;
+              next();
+            }, function(err) { failItem('證明文件上傳失敗'); });
+          });
+        }
+
+        function uploadVideo(next) {
+          if (!item.videoFile) return next();
+          fileToBase64(item.videoFile, function(b64) {
+            callApi('uploadFile', { base64: b64, fileName: item.videoFile.name, mimeType: item.videoFile.type }, function(r) {
+              uploaded.videoFileId = r.fileId;
+              uploaded.videoMimeType = item.videoFile.type;
+              next();
+            }, function(err) { failItem('影音檔案上傳失敗'); });
+          });
+        }
+
+        function createRecord() {
+          callApi('createWork', {
+            title: item.title,
+            studentName: '管理員',
+            description: item.desc,
+            category: item.category,
+            proofFileId: uploaded.proofFileId,
+            proofMimeType: uploaded.proofMimeType,
+            videoFileId: uploaded.videoFileId,
+            videoMimeType: uploaded.videoMimeType,
+            externalLink: item.externalLink || ''
+          }, function() {
+            done++;
+            log.innerHTML += '<div class="text-green-600">✓ ' + escapeHtml(item.title) + '</div>';
             log.scrollTop = log.scrollHeight;
             uploadNext(index + 1);
+          }, function(err) {
+            failItem('建立失敗: ' + err);
           });
-        });
+        }
+
+        uploadProof(function() { uploadVideo(function() { createRecord(); }); });
       }
 
       uploadNext(0);
