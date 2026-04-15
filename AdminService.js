@@ -105,19 +105,24 @@ function batchDeleteWorks(workIds) {
   Logger.log('要刪除的 IDs: ' + JSON.stringify(Object.keys(idSet)));
   Logger.log('Sheet 共有 ' + (data.length - 1) + ' 筆資料');
 
+  // 建立 header 對應表以正確讀取欄位（適應新欄位）
+  var headers = data[0];
+  var colIdx = {};
+  for (var h = 0; h < headers.length; h++) colIdx[headers[h]] = h;
+
   for (var i = 1; i < data.length; i++) {
     var rowId = data[i][0].toString();
     if (idSet[rowId]) {
-      var driveFileId = data[i][7] ? data[i][7].toString() : '';
-      var thumbnailId = data[i][8] ? data[i][8].toString() : '';
-
-      if (driveFileId) {
-        try { deleteFile(driveFileId); } catch (e) {
-          errors.push('檔案刪除失敗: ' + driveFileId + ' - ' + e.message);
+      var fileIds = [
+        data[i][colIdx.driveFileId],
+        data[i][colIdx.thumbnailId],
+        data[i][colIdx.proofFileId],
+        data[i][colIdx.videoFileId]
+      ];
+      for (var f = 0; f < fileIds.length; f++) {
+        if (fileIds[f]) {
+          try { deleteFile(fileIds[f].toString()); } catch (e) { /* ignore */ }
         }
-      }
-      if (thumbnailId) {
-        try { deleteFile(thumbnailId); } catch (e) { /* ignore */ }
       }
 
       rowsToDelete.push(i + 1);

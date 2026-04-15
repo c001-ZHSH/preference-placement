@@ -185,6 +185,25 @@ function getUserInfo(email) {
 }
 
 /**
+ * 取得使用者資訊 + 上傳狀態（含作品數、上限、是否超限）
+ */
+function getUserInfoWithLimit(email) {
+  var info = getUserInfo(email);
+  info.workCount = 0;
+  info.maxWorks = 0;
+  info.overLimit = false;
+
+  if (info.isStudent) {
+    var studentId = info.studentId;
+    info.workCount = countStudentWorks(studentId);
+    var settings = getSettings();
+    info.maxWorks = settings.maxWorksPerStudent || 0;
+    info.overLimit = info.maxWorks > 0 && info.workCount > info.maxWorks;
+  }
+  return info;
+}
+
+/**
  * 清除所有快取（管理員修改名單後呼叫）
  */
 function clearAuthCache() {

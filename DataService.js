@@ -65,6 +65,14 @@ function getCachedWorks() {
     if (!works[w].className && email && classMap[email]) {
       works[w].className = classMap[email];
     }
+    // 向後相容：舊作品只有 driveFileId + fileType，填入新欄位
+    if (!works[w].proofFileId && !works[w].videoFileId && works[w].driveFileId) {
+      if (works[w].fileType === 'pdf') {
+        works[w].proofFileId = works[w].driveFileId;
+      } else if (works[w].fileType === 'video') {
+        works[w].videoFileId = works[w].driveFileId;
+      }
+    }
   }
 
   var result = { headers: headers, works: works };
@@ -196,6 +204,10 @@ function createWork(params) {
   var now = new Date().toISOString();
   var id = generateId();
 
+  // 主要預覽：有證明文件優先，否則用影音
+  var primaryFileId = params.proofFileId || params.videoFileId || params.driveFileId || '';
+  var primaryFileType = params.proofFileId ? 'pdf' : (params.videoFileId ? 'video' : (params.fileType || ''));
+
   var row = [
     id,
     studentId,
@@ -203,13 +215,18 @@ function createWork(params) {
     userEmail,
     params.title,
     params.description || '',
-    params.fileType,
-    params.driveFileId,
+    primaryFileType,
+    primaryFileId,
     params.thumbnailId || '',
     params.category || '',
     now,
     now,
-    studentClass
+    studentClass,
+    params.proofFileId || '',
+    params.proofMimeType || '',
+    params.videoFileId || '',
+    params.videoMimeType || '',
+    params.externalLink || ''
   ];
 
   sheet.appendRow(row);
@@ -270,7 +287,7 @@ function deleteWork(id) {
  */
 function rowToWork(headers, row) {
   var work = {};
-  var textFields = { id:1, studentId:1, studentName:1, studentEmail:1, title:1, description:1, fileType:1, driveFileId:1, thumbnailId:1, category:1, className:1 };
+  var textFields = { id:1, studentId:1, studentName:1, studentEmail:1, title:1, description:1, fileType:1, driveFileId:1, thumbnailId:1, category:1, className:1, proofFileId:1, proofMimeType:1, videoFileId:1, videoMimeType:1, externalLink:1 };
   for (var j = 0; j < headers.length; j++) {
     var key = headers[j];
     var val = row[j];
@@ -559,4 +576,78 @@ function searchWorks(query) {
   });
 
   return results;
+}
+
+// ============================================
+// 系統設定
+// ============================================
+
+var SETTINGS_CACHE_TTL = 300;
+var DEFAULT_SETTINGS = {
+  maxWorksPerStudent: 5,
+  maxDocSize: 4,
+  maxVideoSize: 10
+};
+
+function getSettings() {
+  var cache = CacheService.getScriptCache();
+  var cached = cache.get('settings');
+  if (cached) return JSON.parse(cached);
+
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName('settings');
+  var settings = { maxWorksPerStudent: DEFAULT_SETTINGS.maxWorksPerStudent, maxDocSize: DEFAULT_SETTINGS.maxDocSize, maxVideoSize: DEFAULT_SETTINGS.maxVideoSize };
+
+  if (sheet) {
+    var data = sheet.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      var key = (data[i][0] || '').toString();
+      var val = parseFloat(data[i][1]);
+      if (key && !isNaN(val)) settings[key] = val;
+    }
+  }
+
+  cache.put('settings', JSON.stringify(settings), SETTINGS_CACHE_TTL);
+  return settings;
+}
+
+function updateSettings(newSettings) {
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName('settings');
+  if (!sheet) {
+    sheet = ss.insertSheet('settings');
+    sheet.appendRow(['key', 'value']);
+    sheet.setFrozenRows(1);
+  }
+
+  var data = sheet.getDataRange().getValues();
+  var existingKeys = {};
+  for (var i = 1; i < data.length; i++) {
+    existingKeys[data[i][0]] = i + 1;
+  }
+
+  for (var key in newSettings) {
+    var val = newSettings[key];
+    if (existingKeys[key]) {
+      sheet.getRange(existingKeys[key], 2).setValue(val);
+    } else {
+      sheet.appendRow([key, val]);
+    }
+  }
+
+  CacheService.getScriptCache().remove('settings');
+  return getSettings();
+}
+
+/**
+ * 計算學生已上傳的作品數
+ */
+function countStudentWorks(studentId) {
+  if (!studentId) return 0;
+  var cached = getCachedWorks();
+  var count = 0;
+  for (var i = 0; i < cached.works.length; i++) {
+    if ((cached.works[i].studentId || '').toString() === studentId.toString()) count++;
+  }
+  return count;
 }

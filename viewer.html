@@ -110,6 +110,9 @@
     </div>
 
     <div id="viewer-content" style="display:none;">
+      <!-- 附件切換 tabs -->
+      <div id="attach-tabs" class="flex gap-2 mb-3 flex-wrap" style="display:none;"></div>
+
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- 左側：閱讀器 / 播放器 -->
         <div class="lg:col-span-2">
@@ -139,6 +142,11 @@
                 <i class="fas fa-expand"></i>
               </button>
             </div>
+          </div>
+
+          <!-- 圖片檢視器（JPG/PNG） -->
+          <div id="image-viewer" style="display:none; background:#2d3748; border-radius:12px; overflow:hidden;">
+            <img id="image-element" style="width:100%; max-height:70vh; object-fit:contain; display:block;">
           </div>
 
           <!-- 影片播放器 -->
@@ -234,18 +242,19 @@
       loadWork();
     }
 
+    var currentWork = null;
+
     function loadWork() {
       callApi('getWorkById', { id: workId }, function(work) {
         if (!work) { showNotFound(); return; }
+        currentWork = work;
 
         document.getElementById('viewer-loading').style.display = 'none';
         document.getElementById('viewer-content').style.display = '';
 
-        // 填入作品資訊
         document.getElementById('work-title').textContent = work.title;
         document.getElementById('work-author').textContent = work.studentName || work.studentId;
         document.getElementById('work-date').textContent = '上傳於 ' + formatDate(work.createdAt);
-        document.getElementById('work-type-badge').innerHTML = getFileTypeBadge(work.fileType);
 
         if (work.category) {
           var catEl = document.getElementById('work-category');
@@ -257,18 +266,85 @@
           document.getElementById('work-description').textContent = work.description;
         }
 
-        // 顯示按讚資訊
         updateLikeUI(work.liked, work.likeCount);
 
-        // 根據檔案類型載入
-        if (work.fileType === 'pdf') {
-          loadPdfViewer(work.driveFileId);
-        } else {
-          loadVideoPlayer(work.driveFileId);
+        // 決定可用的附件，建立 tabs
+        buildAttachTabs(work);
+
+        // 預設顯示第一個可用的附件
+        var proofId = work.proofFileId || (work.fileType === 'pdf' ? work.driveFileId : '');
+        var videoId = work.videoFileId || (work.fileType === 'video' ? work.driveFileId : '');
+
+        if (proofId) {
+          showAttachment('proof');
+        } else if (videoId) {
+          showAttachment('video');
+        } else if (work.externalLink) {
+          showAttachment('external');
         }
       }, function(err) {
         showNotFound();
       });
+    }
+
+    function buildAttachTabs(work) {
+      var tabs = [];
+      var proofId = work.proofFileId || (work.fileType === 'pdf' ? work.driveFileId : '');
+      var videoId = work.videoFileId || (work.fileType === 'video' ? work.driveFileId : '');
+      var proofMime = work.proofMimeType || '';
+      var isImage = proofMime.indexOf('image') !== -1;
+
+      if (proofId) {
+        tabs.push({ type: 'proof', label: (isImage ? '證明圖片' : '證明文件'), icon: (isImage ? 'fa-image' : 'fa-file-pdf') });
+      }
+      if (videoId) tabs.push({ type: 'video', label: '影音檔案', icon: 'fa-video' });
+      if (work.externalLink) tabs.push({ type: 'external', label: '外部連結', icon: 'fa-external-link-alt' });
+
+      var container = document.getElementById('attach-tabs');
+      if (tabs.length <= 1) { container.style.display = 'none'; return; }
+
+      container.style.display = '';
+      container.innerHTML = '';
+      tabs.forEach(function(t) {
+        container.innerHTML += '<button class="btn-secondary attach-tab" data-type="' + t.type + '" onclick="showAttachment(\'' + t.type + '\')" style="padding:6px 14px; font-size:0.85rem;"><i class="fas ' + t.icon + ' mr-1"></i>' + t.label + '</button>';
+      });
+    }
+
+    function setTabActive(type) {
+      document.querySelectorAll('.attach-tab').forEach(function(b) {
+        var active = b.getAttribute('data-type') === type;
+        b.style.background = active ? '#2d5f8a' : '#e2e8f0';
+        b.style.color = active ? 'white' : '#4a5568';
+      });
+    }
+
+    function showAttachment(type) {
+      if (!currentWork) return;
+      setTabActive(type);
+
+      // 隱藏全部
+      document.getElementById('pdf-viewer').style.display = 'none';
+      document.getElementById('video-player').style.display = 'none';
+      document.getElementById('image-viewer').style.display = 'none';
+
+      var work = currentWork;
+      var proofId = work.proofFileId || (work.fileType === 'pdf' ? work.driveFileId : '');
+      var videoId = work.videoFileId || (work.fileType === 'video' ? work.driveFileId : '');
+      var proofMime = work.proofMimeType || '';
+      var isImage = proofMime.indexOf('image') !== -1;
+
+      if (type === 'proof' && proofId) {
+        if (isImage) {
+          document.getElementById('image-viewer').style.display = '';
+          document.getElementById('image-element').src = 'https://drive.google.com/thumbnail?id=' + proofId + '&sz=w1600';
+        } else {
+          loadPdfViewer(proofId);
+        }
+      } else if (type === 'video' && videoId) {
+        loadVideoPlayer(videoId);
+      } else if (type === 'external' && work.externalLink) {
+        window.open(work.externalLink, '_blank');
+      }
     }
 
     function showNotFound() {

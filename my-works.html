@@ -55,7 +55,7 @@
         <h1 class="text-2xl font-bold text-gray-800 mb-1">
           <i class="fas fa-folder-open mr-2 text-blue-500"></i>我的作品
         </h1>
-        <p class="text-gray-500">管理你上傳的自主學習成果</p>
+        <p class="text-gray-500">管理你上傳的自主學習成果 <span id="work-count-hint" class="text-blue-500"></span></p>
       </div>
       <button class="btn-primary" onclick="navigateTo('upload')">
         <i class="fas fa-plus"></i> 新增作品
@@ -90,6 +90,11 @@
     var myWorks = [];
 
     function onUserLoaded(user) {
+      if (user && user.isStudent && user.maxWorks > 0) {
+        var color = user.overLimit ? '#dc2626' : (user.workCount >= user.maxWorks ? '#dc2626' : '#2d5f8a');
+        document.getElementById('work-count-hint').innerHTML =
+          '<span style="color:' + color + '; font-weight:500;">（已上傳 ' + user.workCount + ' / 上限 ' + user.maxWorks + '）</span>';
+      }
       loadMyWorks();
     }
 

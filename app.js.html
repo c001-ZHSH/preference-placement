@@ -44,11 +44,33 @@ function loadCurrentUser() {
 }
 
 /**
+ * 顯示超限警告橫幅
+ */
+function showOverLimitBanner(user) {
+  var existing = document.getElementById('over-limit-banner');
+  if (user && user.isStudent && user.overLimit) {
+    if (!existing) {
+      var banner = document.createElement('div');
+      banner.id = 'over-limit-banner';
+      banner.style.cssText = 'background:#fef2f2; border-bottom:2px solid #fca5a5; padding:12px 16px; text-align:center; color:#991b1b; font-size:0.9rem; position:sticky; top:0; z-index:100;';
+      banner.innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i>您上傳的作品數（' + user.workCount + '）已超過目前上限（' + user.maxWorks + '），請至 <a href="' + getBaseUrl() + '?page=my-works" target="_top" style="color:#dc2626; text-decoration:underline; font-weight:bold;">我的作品</a> 刪除部分作品以繼續正常使用。';
+      document.body.insertBefore(banner, document.body.firstChild);
+    }
+  } else if (existing) {
+    existing.remove();
+  }
+}
+
+/**
  * 套用使用者資訊到 UI（可被合併 API 直接呼叫）
  */
 function applyUserInfo(user) {
   currentUser = user;
   saveCache('user', user);
+
+  // 超限提示
+  showOverLimitBanner(user);
+
   var displayEl = document.getElementById('user-display-name');
   if (displayEl) {
     displayEl.textContent = user.name || user.studentId;
@@ -199,53 +221,73 @@ function truncate(str, maxLen) {
  * 建立作品卡片 HTML
  */
 function createWorkCard(work) {
-  var thumbClass = work.fileType === 'pdf' ? 'pdf-thumb' : 'video-thumb';
-  var thumbIcon = work.fileType === 'pdf' ? 'fa-file-pdf' : 'fa-play-circle';
   var baseUrl = getBaseUrl();
-
   var likeCount = work.likeCount || 0;
   var likedClass = work.liked ? 'color:#e53e3e;' : '';
+  var thumbId = 'thumb-' + work.id;
+
+  // 決定預覽：證明文件優先，其次影音
+  var previewId = work.proofFileId || (work.fileType === 'pdf' ? work.driveFileId : '');
+  var videoId = work.videoFileId || (work.fileType === 'video' ? work.driveFileId : '');
+  var primaryId = previewId || videoId;
+  var isProofPreview = !!previewId;
+  var isImagePreview = isProofPreview && (work.proofMimeType || '').indexOf('image') !== -1;
 
   // 縮圖 HTML
   var thumbnailHtml = '';
-  var thumbId = 'thumb-' + work.id;
+  var thumbClass = isProofPreview ? 'pdf-thumb' : 'video-thumb';
 
-  if (work.driveFileId && work.fileType === 'pdf') {
-    // PDF：直接用 Drive 縮圖 URL（通常可用）
-    var thumbUrl = 'https://drive.google.com/thumbnail?id=' + work.driveFileId + '&sz=w400';
+  if (isImagePreview && primaryId) {
+    // 圖片：直接顯示
+    var imgUrl = 'https://drive.google.com/thumbnail?id=' + primaryId + '&sz=w400';
     thumbnailHtml =
-      '<div class="thumbnail ' + thumbClass + '" style="position:relative;">' +
+      '<div class="thumbnail" style="position:relative; background:#f0f0f0;">' +
+        '<img src="' + imgUrl + '" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';">' +
+        '<div style="display:none;width:100%;height:100%;align-items:center;justify-content:center;position:absolute;inset:0;background:linear-gradient(135deg,#667eea,#764ba2);color:white;"><i class="fas fa-image"></i></div>' +
+      '</div>';
+  } else if (isProofPreview && primaryId) {
+    // PDF：使用 Drive 縮圖
+    var thumbUrl = 'https://drive.google.com/thumbnail?id=' + primaryId + '&sz=w400';
+    thumbnailHtml =
+      '<div class="thumbnail pdf-thumb" style="position:relative;">' +
         '<img src="' + thumbUrl + '" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';">' +
         '<div style="display:none;width:100%;height:100%;align-items:center;justify-content:center;position:absolute;inset:0;">' +
-          '<i class="fas ' + thumbIcon + '"></i>' +
+          '<i class="fas fa-file-pdf"></i>' +
         '</div>' +
       '</div>';
-  } else if (work.driveFileId && work.fileType === 'video') {
+  } else if (videoId) {
     // 影片：縮圖 + hover 預覽
     thumbnailHtml =
-      '<div class="thumbnail ' + thumbClass + '" id="' + thumbId + '" style="position:relative;" ' +
-           'data-file-id="' + work.driveFileId + '" ' +
+      '<div class="thumbnail video-thumb" id="' + thumbId + '" style="position:relative;" ' +
+           'data-file-id="' + videoId + '" ' +
            'onmouseenter="startVideoPreview(this)" onmouseleave="stopVideoPreview(this)">' +
         '<i class="fas fa-play-circle"></i>' +
       '</div>';
+  } else if (work.externalLink) {
+    thumbnailHtml =
+      '<div class="thumbnail" style="background:linear-gradient(135deg,#3b82f6,#2563eb); color:white; display:flex; align-items:center; justify-content:center; font-size:2.5rem;"><i class="fas fa-link"></i></div>';
   } else {
     thumbnailHtml =
-      '<div class="thumbnail ' + thumbClass + '">' +
-        '<i class="fas ' + thumbIcon + '"></i>' +
-      '</div>';
+      '<div class="thumbnail" style="background:#e5e7eb; color:#9ca3af; display:flex; align-items:center; justify-content:center; font-size:2.5rem;"><i class="fas fa-file"></i></div>';
   }
+
+  // 附件類型 badges（卡片下方顯示擁有哪些附件）
+  var attachBadges = '';
+  if (work.proofFileId || work.fileType === 'pdf') attachBadges += '<span title="證明文件" style="color:#dc2626; margin-right:6px;"><i class="fas fa-file-alt"></i></span>';
+  if (work.videoFileId || work.fileType === 'video') attachBadges += '<span title="影音檔案" style="color:#8b5cf6; margin-right:6px;"><i class="fas fa-video"></i></span>';
+  if (work.externalLink) attachBadges += '<span title="外部連結" style="color:#3b82f6;"><i class="fas fa-link"></i></span>';
 
   var viewUrl = baseUrl + '?page=viewer&id=' + work.id;
 
   return '' +
     '<a class="work-card" href="' + viewUrl + '" target="_top" style="text-decoration:none; color:inherit; display:block;">' +
       thumbnailHtml +
+      (attachBadges ? '<div style="padding:6px 12px 0; display:flex; align-items:center; font-size:0.85rem;">' + attachBadges + '</div>' : '') +
       '<div class="p-4">' +
-        '<div class="flex items-center justify-between mb-2">' +
-          getFileTypeBadge(work.fileType) +
+        '<div class="flex items-center justify-between mb-1">' +
+          (work.category ? '<span class="text-xs text-blue-500"><i class="fas fa-tag mr-1"></i>' + escapeHtml(work.category) + '</span>' : '<span></span>') +
           '<span class="text-xs text-gray-400">' + formatDate(work.createdAt) + '</span>' +
         '</div>' +
-        (work.category ? '<div class="text-xs text-blue-500 mb-1"><i class="fas fa-tag mr-1"></i>' + escapeHtml(work.category) + '</div>' : '') +
         '<h3 class="font-bold text-gray-800 mb-1">' + escapeHtml(truncate(work.title, 20)) + '</h3>' +
         '<div class="flex items-center justify-between">' +
           '<div class="flex items-center gap-1 text-xs text-gray-400">' +
@@ -315,10 +357,11 @@ var videoBlobCache = {}; // 快取影片 blob URL
 
 function loadVideoThumbnails(works) {
   works.forEach(function(work) {
-    if (work.fileType === 'video' && work.driveFileId) {
-      var thumbId = 'thumb-' + work.id;
-      // 直接從影片取第一幀作為縮圖
-      loadVideoFirstFrame(work.driveFileId, thumbId);
+    // 只有沒有證明文件、才用影片做縮圖
+    var videoId = work.videoFileId || (work.fileType === 'video' ? work.driveFileId : '');
+    var hasProof = work.proofFileId || work.fileType === 'pdf';
+    if (videoId && !hasProof) {
+      loadVideoFirstFrame(videoId, 'thumb-' + work.id);
     }
   });
 }

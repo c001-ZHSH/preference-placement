@@ -59,6 +59,40 @@
       <div class="stat-card"><div class="stat-number" id="stat-video">-</div><p class="text-sm text-gray-500 mt-1">影片檔案</p></div>
     </div>
 
+    <!-- ==================== 系統設定 ==================== -->
+    <div class="admin-section">
+      <div class="collapsible-header flex items-center justify-between" onclick="toggleCollapse('settings-body', 'settings-arrow')">
+        <h2 class="text-lg font-bold text-gray-800">
+          <i class="fas fa-sliders-h mr-1 text-gray-500"></i> 系統設定
+        </h2>
+        <i class="fas fa-chevron-down text-gray-400" id="settings-arrow" style="transition:transform 0.3s;"></i>
+      </div>
+      <div class="collapsible-body collapsed" id="settings-body" style="max-height:0;">
+        <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-1">學生上傳上限</label>
+            <input type="number" id="setting-maxWorks" class="form-input" min="0" style="padding:8px;">
+            <p class="text-xs text-gray-400 mt-1">每位學生最多可上傳幾件（0 = 不限）</p>
+          </div>
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-1">證明文件大小上限 (MB)</label>
+            <input type="number" id="setting-maxDocSize" class="form-input" min="1" max="50" style="padding:8px;">
+            <p class="text-xs text-gray-400 mt-1">PDF / JPG / PNG</p>
+          </div>
+          <div>
+            <label class="block text-sm font-bold text-gray-700 mb-1">影音檔案大小上限 (MB)</label>
+            <input type="number" id="setting-maxVideoSize" class="form-input" min="1" max="50" style="padding:8px;">
+            <p class="text-xs text-gray-400 mt-1">MP3 / MP4</p>
+          </div>
+        </div>
+        <div class="mt-4 flex justify-end">
+          <button class="btn-primary" onclick="saveSettings()">
+            <i class="fas fa-save mr-1"></i> 儲存設定
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- ==================== 批次上傳（管理員） ==================== -->
     <div class="admin-section">
       <div class="collapsible-header flex items-center justify-between" onclick="toggleCollapse('batch-upload-body', 'batch-upload-arrow')">
@@ -269,6 +303,12 @@
     }
 
     function applyAdminData(data) {
+      // 系統設定
+      if (data.settings) {
+        document.getElementById('setting-maxWorks').value = data.settings.maxWorksPerStudent || 0;
+        document.getElementById('setting-maxDocSize').value = data.settings.maxDocSize || 4;
+        document.getElementById('setting-maxVideoSize').value = data.settings.maxVideoSize || 10;
+      }
       // 統計
       document.getElementById('stat-total').textContent = data.statistics.totalWorks;
       document.getElementById('stat-students').textContent = data.statistics.totalStudents;
@@ -294,6 +334,37 @@
     // 批次上傳（逐筆新增 → 一鍵上傳）
     // ============================
     var bulkQueue = []; // { file, category, title, desc }
+
+    // ============================
+    // 系統設定
+    // ============================
+    function saveSettings() {
+      var maxWorks = parseInt(document.getElementById('setting-maxWorks').value, 10);
+      var maxDocSize = parseInt(document.getElementById('setting-maxDocSize').value, 10);
+      var maxVideoSize = parseInt(document.getElementById('setting-maxVideoSize').value, 10);
+
+      if (isNaN(maxWorks) || maxWorks < 0) { alert('學生上傳上限需為 0 或正整數'); return; }
+      if (isNaN(maxDocSize) || maxDocSize < 1) { alert('證明文件大小需為正整數'); return; }
+      if (isNaN(maxVideoSize) || maxVideoSize < 1) { alert('影音檔案大小需為正整數'); return; }
+
+      showLoading('儲存設定中...');
+      callApi('updateSettings', {
+        settings: {
+          maxWorksPerStudent: maxWorks,
+          maxDocSize: maxDocSize,
+          maxVideoSize: maxVideoSize
+        }
+      }, function() {
+        hideLoading();
+        showToast('設定已儲存', 'success');
+        // 清除快取
+        try { sessionStorage.removeItem('sslp_settings'); } catch(e) {}
+        try { sessionStorage.removeItem('sslp_adminData'); } catch(e) {}
+      }, function(err) {
+        hideLoading();
+        alert('儲存失敗: ' + err);
+      });
+    }
 
     function populateBulkCategories(cats) {
       var select = document.getElementById('bulk-add-category');

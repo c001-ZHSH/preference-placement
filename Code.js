@@ -144,6 +144,17 @@ function handleApiRequest(action, params) {
       case 'getMyWorks':
         return { success: true, data: getWorksByStudent(getStudentId(userEmail)) };
       case 'createWork':
+        // 檢查學生上傳上限（管理員不受限）
+        if (!isAdmin(userEmail)) {
+          var settings = getSettings();
+          var maxWorks = settings.maxWorksPerStudent || 0;
+          if (maxWorks > 0) {
+            var currentCount = countStudentWorks(getStudentId(userEmail));
+            if (currentCount >= maxWorks) {
+              return { success: false, error: '您已達上傳上限（' + maxWorks + ' 件），請先刪除舊作品' };
+            }
+          }
+        }
         return { success: true, data: createWork(params) };
       case 'updateWork':
         return updateWorkWithAuth(params, userEmail);
@@ -160,15 +171,24 @@ function handleApiRequest(action, params) {
       case 'getCategories':
         return { success: true, data: getCategories() };
 
-      // 使用者資訊
-      case 'getCurrentUser':
-        return { success: true, data: getUserInfo(userEmail) };
+      // 系統設定
+      case 'getSettings':
+        return { success: true, data: getSettings() };
+      case 'updateSettings':
+        if (!isAdmin(userEmail)) return { success: false, error: '需要管理員權限' };
+        return { success: true, data: updateSettings(params.settings) };
 
-      // 首頁一次載入（合併 user + categories + works）
+      // 使用者資訊（含上傳狀態）
+      case 'getCurrentUser':
+        return { success: true, data: getUserInfoWithLimit(userEmail) };
+
+      // 首頁一次載入（合併 user + categories + works + settings + 上傳狀態）
       case 'getIndexPageData':
+        var userInfoIdx = getUserInfoWithLimit(userEmail);
         return { success: true, data: {
-          user: getUserInfo(userEmail),
+          user: userInfoIdx,
           categories: getCategories(),
+          settings: getSettings(),
           works: getAllWorksWithLikes(params.page, params.pageSize, params.search, params.fileType, params.sortBy, userEmail, params.category)
         }};
 
@@ -178,6 +198,7 @@ function handleApiRequest(action, params) {
         return { success: true, data: {
           user: getUserInfo(userEmail),
           categories: getCategories(),
+          settings: getSettings(),
           statistics: getStatistics()
         }};
 
@@ -242,12 +263,12 @@ function deleteWorkWithAuth(workId, userEmail) {
     return { success: false, error: '您沒有權限刪除此作品' };
   }
 
-  // 刪除 Drive 檔案
-  if (work.driveFileId) {
-    try { deleteFile(work.driveFileId); } catch (e) { /* 檔案可能已不存在 */ }
-  }
-  if (work.thumbnailId) {
-    try { deleteFile(work.thumbnailId); } catch (e) { /* 縮圖可能已不存在 */ }
+  // 刪除所有關聯檔案（證明文件 + 影音 + 舊主檔）
+  var toDelete = [work.driveFileId, work.thumbnailId, work.proofFileId, work.videoFileId];
+  for (var i = 0; i < toDelete.length; i++) {
+    if (toDelete[i]) {
+      try { deleteFile(toDelete[i]); } catch (e) { /* 檔案可能已不存在 */ }
+    }
   }
 
   // 刪除 Sheet 記錄
@@ -268,7 +289,8 @@ function initializeSpreadsheet() {
     worksSheet.appendRow([
       'id', 'studentId', 'studentName', 'studentEmail',
       'title', 'description', 'fileType', 'driveFileId',
-      'thumbnailId', 'category', 'createdAt', 'updatedAt', 'className'
+      'thumbnailId', 'category', 'createdAt', 'updatedAt', 'className',
+      'proofFileId', 'proofMimeType', 'videoFileId', 'videoMimeType', 'externalLink'
     ]);
     worksSheet.setFrozenRows(1);
   }
@@ -311,6 +333,17 @@ function initializeSpreadsheet() {
     adminsSheet.setFrozenRows(1);
     // 預設加入一個管理員（請修改為實際的管理員 email）
     adminsSheet.appendRow(['admin@mail2.chshs.ntpc.edu.tw', '系統管理員']);
+  }
+
+  // 建立系統設定表
+  var settingsSheet = ss.getSheetByName('settings');
+  if (!settingsSheet) {
+    settingsSheet = ss.insertSheet('settings');
+    settingsSheet.appendRow(['key', 'value']);
+    settingsSheet.setFrozenRows(1);
+    settingsSheet.appendRow(['maxWorksPerStudent', '5']);
+    settingsSheet.appendRow(['maxDocSize', '4']);
+    settingsSheet.appendRow(['maxVideoSize', '10']);
   }
 
   // 刪除預設的 Sheet1
